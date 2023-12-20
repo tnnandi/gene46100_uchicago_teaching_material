@@ -157,7 +157,7 @@ class TranscriptomeTokenizer:
         tokenize_file_fn = (
             self.tokenize_loom if file_format == "loom" else self.tokenize_anndata
         )
-        for file_path in data_directory.glob("*.{}".format(file_format)):
+        for file_path in data_directory.glob(f"*.{file_format}"):
             file_found = 1
             print(f"Tokenizing {file_path}")
             file_tokenized_cells, file_cell_metadata = tokenize_file_fn(file_path)
@@ -278,7 +278,9 @@ class TranscriptomeTokenizer:
 
             # scan through .loom files and tokenize cells
             tokenized_cells = []
-            for _ix, _selection, view in data.scan(items=filter_pass_loc, axis=1):
+            for _ix, _selection, view in data.scan(
+                items=filter_pass_loc, axis=1, batch_size=self.chunk_size
+            ):
                 # select subview with protein-coding and miRNA genes
                 subview = view.view[coding_miRNA_loc, :]
 
