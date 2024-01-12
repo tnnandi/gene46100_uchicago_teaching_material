@@ -3,6 +3,7 @@ import logging
 import pickle
 import re
 from collections import defaultdict
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -275,9 +276,9 @@ def remove_indices_from_emb_batch(emb_batch, list_of_indices_to_remove, gene_dim
 def remove_perturbed_indices_set(
     emb,
     perturb_type: str,
-    indices_to_perturb: list[list],
-    tokens_to_perturb: list[list],
-    original_lengths: list[int],
+    indices_to_perturb: List[List],
+    tokens_to_perturb: List[List],
+    original_lengths: List[int],
     input_ids=None,
 ):
     if perturb_type == "overexpress":
@@ -306,7 +307,7 @@ def remove_perturbed_indices_set(
 
 def make_perturbation_batch(
     example_cell, perturb_type, tokens_to_perturb, anchor_token, combo_lvl, num_proc
-) -> tuple[Dataset, list[int]]:
+) -> tuple[Dataset, List[int]]:
     if combo_lvl == 0 and tokens_to_perturb == "all":
         if perturb_type in ["overexpress", "activate"]:
             range_start = 1

@@ -31,6 +31,7 @@ import logging
 import os
 import pickle
 from collections import defaultdict
+from typing import List
 
 import seaborn as sns
 import torch
@@ -873,7 +874,7 @@ class InSilicoPerturber:
         cos_sims_dict: defaultdict,
         cos_sims_data: torch.Tensor,
         filtered_input_data: Dataset,
-        indices_to_perturb: list[list[int]],
+        indices_to_perturb: List[List[int]],
         gene_list=None,
     ):
         if gene_list is not None and cos_sims_data.shape[0] != len(gene_list):
