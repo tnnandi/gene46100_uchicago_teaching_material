@@ -26,8 +26,8 @@
 
 /* class object */
 .sig.sig-object {
-    padding: 5px 5px 5px 8px;
-    background-color: #e6e6e6;
+    padding: 5px 5px 5px 5px;
+    background-color: #ececec;
     border-style: solid;
     border-color: black;
     border-width: 1px 0;
@@ -35,6 +35,6 @@
 
 /* parameter object */
 dt {
-    padding: 5px 5px 5px 8px;
-    background-color: #ebebeb;
+    padding: 5px 5px 5px 5px;
+    background-color: #ececec;
 }

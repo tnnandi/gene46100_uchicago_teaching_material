@@ -8,7 +8,7 @@ Model Description
 
 In `our manuscript <https://rdcu.be/ddrx0>`_, we report results for the 6 layer Geneformer model pretrained on Genecorpus-30M. We additionally provide within the repository a 12 layer Geneformer model, scaled up with retained width:depth aspect ratio, also pretrained on Genecorpus-30M.
 
-Both the 6 and 12 layer Geneformer models were pretrained in June 2021.
+Both the `6 <https://huggingface.co/ctheodoris/Geneformer/blob/main/pytorch_model.bin>`_ and `12 <https://huggingface.co/ctheodoris/Geneformer/blob/main/geneformer-12L-30M/pytorch_model.bin>`_ layer Geneformer models were pretrained in June 2021.
 
 Application
 -----------
