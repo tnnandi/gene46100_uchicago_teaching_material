@@ -87,8 +87,8 @@ class TranscriptomeTokenizer:
         """
         Initialize tokenizer.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         custom_attr_name_dict : None, dict
             | Dictionary of custom attributes to be added to the dataset.
             | Keys are the names of the attributes in the loom file.
@@ -138,8 +138,8 @@ class TranscriptomeTokenizer:
         """
         Tokenize .loom files in data_directory and save as tokenized .dataset in output_directory.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         data_directory : Path
             Path to directory containing loom files or anndata files
         output_directory : Path

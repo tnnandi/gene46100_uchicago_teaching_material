@@ -652,8 +652,8 @@ class InSilicoPerturberStats:
         """
         Initialize in silico perturber stats generator.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         mode : {"goal_state_shift", "vs_null", "mixture_model", "aggregate_data", "aggregate_gene_shifts"}
             | Type of stats.
             | "goal_state_shift": perturbation vs. random for desired cell state shift
@@ -854,8 +854,8 @@ class InSilicoPerturberStats:
         """
         Get stats for in silico perturbation data and save as results in output_directory.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         input_data_directory : Path
             | Path to directory containing cos_sim dictionary inputs
         null_dist_data_directory : Path
@@ -867,8 +867,8 @@ class InSilicoPerturberStats:
         null_dict_list: dict
             | List of loaded null distribtion dictionary if more than one comparison vs. the null is to be performed
 
-        Outputs
-        ~~~~~~~
+        **Outputs:**
+
         Definition of possible columns in .csv output file.
 
         | Of note, not all columns will be present in all output files.

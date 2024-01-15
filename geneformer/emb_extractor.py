@@ -395,8 +395,8 @@ class EmbExtractor:
         """
         Initialize embedding extractor.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         model_type : {"Pretrained","GeneClassifier","CellClassifier"}
             | Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
         num_classes : int
@@ -442,8 +442,7 @@ class EmbExtractor:
         token_dictionary_file : Path
             | Path to pickle file containing token dictionary (Ensembl ID:token).
 
-        Examples
-        ~~~~~~~~
+        **Examples:**
 
         .. code-block :: python
 
@@ -532,8 +531,8 @@ class EmbExtractor:
         """
         Extract embeddings from input data and save as results in output_directory.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         model_directory : Path
             | Path to directory containing model
         input_data_file : Path
@@ -548,8 +547,7 @@ class EmbExtractor:
         cell_state : dict
             | Cell state key and value for state embedding extraction.
 
-        Examples
-        ~~~~~~~~
+        **Examples:**
 
         .. code-block :: python
 
@@ -629,8 +627,8 @@ class EmbExtractor:
         """
         Extract exact mean or exact median cell state embedding positions from input data and save as results in output_directory.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         cell_states_to_model : None, dict
             | Cell states to model if testing perturbations that achieve goal state change.
             | Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
@@ -655,8 +653,8 @@ class EmbExtractor:
             | Whether or not to also output the embeddings as a tensor.
             | Note, if true, will output embeddings as both dataframe and tensor.
 
-        Outputs
-        ~~~~~~~
+        **Outputs**
+
         | Outputs state_embs_dict for use with in silico perturber.
         | Format is dictionary of embedding positions of each cell state to model shifts from/towards.
         | Keys specify each possible cell state to model.
@@ -721,8 +719,8 @@ class EmbExtractor:
         """
         Plot embeddings, coloring by provided labels.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         embs : pandas.core.frame.DataFrame
             | Pandas dataframe containing embeddings output from extract_embs
         plot_style : str
@@ -738,8 +736,7 @@ class EmbExtractor:
         kwargs_dict : dict
             | Dictionary of kwargs to pass to plotting function.
 
-        Examples
-        ~~~~~~~~
+        **Examples:**
 
         .. code-block :: python
 

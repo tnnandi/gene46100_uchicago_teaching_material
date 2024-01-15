@@ -100,8 +100,8 @@ class InSilicoPerturber:
         """
         Initialize in silico perturber.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         perturb_type : {"delete", "overexpress", "inhibit", "activate"}
             | Type of perturbation.
             | "delete": delete gene from rank value encoding
@@ -398,8 +398,8 @@ class InSilicoPerturber:
         """
         Perturb genes in input data and save as results in output_directory.
 
-        Parameters
-        ~~~~~~~~~~
+        **Parameters:**
+
         model_directory : Path
             | Path to directory containing model
         input_data_file : Path
