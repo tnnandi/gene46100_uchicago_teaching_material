@@ -1,19 +1,27 @@
 """
 Geneformer in silico perturber stats generator.
 
-Usage:
-  from geneformer import InSilicoPerturberStats
-  ispstats = InSilicoPerturberStats(mode="goal_state_shift",
-                                    combos=0,
-                                    anchor_gene=None,
-                                    cell_states_to_model={"state_key": "disease",
-                                                          "start_state": "dcm",
-                                                          "goal_state": "nf",
-                                                          "alt_states": ["hcm", "other1", "other2"]})
-  ispstats.get_stats("path/to/input_data",
-                     None,
-                     "path/to/output_directory",
-                     "output_prefix")
+**Usage:**
+
+.. code-block :: python
+
+    >>> from geneformer import InSilicoPerturberStats
+    >>> ispstats = InSilicoPerturberStats(mode="goal_state_shift",
+        ...    cell_states_to_model={"state_key": "disease",
+        ...                          "start_state": "dcm",
+        ...                          "goal_state": "nf",
+        ...                          "alt_states": ["hcm", "other1", "other2"]})
+        ... )
+    >>> ispstats.get_stats("path/to/input_data",
+        ...                None,
+        ...                "path/to/output_directory",
+        ...                "output_prefix")
+
+**Description:**
+
+| Collates data or calculates stats for in silico perturbations based on type of statistics specified in InSilicoPerturberStats.
+| Input data is raw in silico perturbation results in the form of dictionaries outputted by ``in_silico_perturber``.
+
 """
 
 
@@ -645,41 +653,41 @@ class InSilicoPerturberStats:
         Initialize in silico perturber stats generator.
 
         Parameters
-        ----------
-        mode : {"goal_state_shift","vs_null","mixture_model","aggregate_data","aggregate_gene_shifts"}
-            Type of stats.
-            "goal_state_shift": perturbation vs. random for desired cell state shift
-            "vs_null": perturbation vs. null from provided null distribution dataset
-            "mixture_model": perturbation in impact vs. no impact component of mixture model (no goal direction)
-            "aggregate_data": aggregates cosine shifts for single perturbation in multiple cells
-            "aggregate_gene_shifts": aggregates cosine shifts of genes in response to perturbation(s)
+        ~~~~~~~~~~
+        mode : {"goal_state_shift", "vs_null", "mixture_model", "aggregate_data", "aggregate_gene_shifts"}
+            | Type of stats.
+            | "goal_state_shift": perturbation vs. random for desired cell state shift
+            | "vs_null": perturbation vs. null from provided null distribution dataset
+            | "mixture_model": perturbation in impact vs. no impact component of mixture model (no goal direction)
+            | "aggregate_data": aggregates cosine shifts for single perturbation in multiple cells
+            | "aggregate_gene_shifts": aggregates cosine shifts of genes in response to perturbation(s)
         genes_perturbed : "all", list
-            Genes perturbed in isp experiment.
-            Default is assuming genes_to_perturb in isp experiment was "all" (each gene in each cell).
-            Otherwise, may provide a list of ENSEMBL IDs of genes perturbed as a group all together.
+            | Genes perturbed in isp experiment.
+            | Default is assuming genes_to_perturb in isp experiment was "all" (each gene in each cell).
+            | Otherwise, may provide a list of ENSEMBL IDs of genes perturbed as a group all together.
         combos : {0,1,2}
-            Whether to perturb genes individually (0), in pairs (1), or in triplets (2).
+            | Whether to perturb genes individually (0), in pairs (1), or in triplets (2).
         anchor_gene : None, str
-            ENSEMBL ID of gene to use as anchor in combination perturbations or in testing effect on downstream genes.
-            For example, if combos=1 and anchor_gene="ENSG00000136574":
-                analyzes data for anchor gene perturbed in combination with each other gene.
-            However, if combos=0 and anchor_gene="ENSG00000136574":
-                analyzes data for the effect of anchor gene's perturbation on the embedding of each other gene.
+            | ENSEMBL ID of gene to use as anchor in combination perturbations or in testing effect on downstream genes.
+            | For example, if combos=1 and anchor_gene="ENSG00000136574":
+            |    analyzes data for anchor gene perturbed in combination with each other gene.
+            | However, if combos=0 and anchor_gene="ENSG00000136574":
+            |    analyzes data for the effect of anchor gene's perturbation on the embedding of each other gene.
         cell_states_to_model: None, dict
-            Cell states to model if testing perturbations that achieve goal state change.
-            Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
-            state_key: key specifying name of column in .dataset that defines the start/goal states
-            start_state: value in the state_key column that specifies the start state
-            goal_state: value in the state_key column taht specifies the goal end state
-            alt_states: list of values in the state_key column that specify the alternate end states
-            For example: {"state_key": "disease",
-                          "start_state": "dcm",
-                          "goal_state": "nf",
-                          "alt_states": ["hcm", "other1", "other2"]}
+            | Cell states to model if testing perturbations that achieve goal state change.
+            | Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
+            | state_key: key specifying name of column in .dataset that defines the start/goal states
+            | start_state: value in the state_key column that specifies the start state
+            | goal_state: value in the state_key column taht specifies the goal end state
+            | alt_states: list of values in the state_key column that specify the alternate end states
+            | For example: {"state_key": "disease",
+            |               "start_state": "dcm",
+            |               "goal_state": "nf",
+            |               "alt_states": ["hcm", "other1", "other2"]}
         token_dictionary_file : Path
-            Path to pickle file containing token dictionary (Ensembl ID:token).
+            | Path to pickle file containing token dictionary (Ensembl ID:token).
         gene_name_id_dictionary_file : Path
-            Path to pickle file containing gene name to ID dictionary (gene name:Ensembl ID).
+            | Path to pickle file containing gene name to ID dictionary (gene name:Ensembl ID).
         """
 
         self.mode = mode
@@ -847,64 +855,64 @@ class InSilicoPerturberStats:
         Get stats for in silico perturbation data and save as results in output_directory.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         input_data_directory : Path
-            Path to directory containing cos_sim dictionary inputs
+            | Path to directory containing cos_sim dictionary inputs
         null_dist_data_directory : Path
-            Path to directory containing null distribution cos_sim dictionary inputs
+            | Path to directory containing null distribution cos_sim dictionary inputs
         output_directory : Path
-            Path to directory where perturbation data will be saved as .csv
+            | Path to directory where perturbation data will be saved as .csv
         output_prefix : str
-            Prefix for output .csv
+            | Prefix for output .csv
         null_dict_list: dict
-            List of loaded null distribtion dictionary if more than one comparison vs. the null is to be performed
+            | List of loaded null distribtion dictionary if more than one comparison vs. the null is to be performed
 
         Outputs
-        ----------
+        ~~~~~~~
         Definition of possible columns in .csv output file.
 
-        Of note, not all columns will be present in all output files.
-        Some columns are specific to particular perturbation modes.
+        | Of note, not all columns will be present in all output files.
+        | Some columns are specific to particular perturbation modes.
 
-        "Gene": gene token
-        "Gene_name": gene name
-        "Ensembl_ID": gene Ensembl ID
-        "N_Detections": number of cells in which each gene or gene combination was detected in the input dataset
-        "Sig": 1 if FDR<0.05, otherwise 0
+        | "Gene": gene token
+        | "Gene_name": gene name
+        | "Ensembl_ID": gene Ensembl ID
+        | "N_Detections": number of cells in which each gene or gene combination was detected in the input dataset
+        | "Sig": 1 if FDR<0.05, otherwise 0
 
-        "Shift_to_goal_end": cosine shift from start state towards goal end state in response to given perturbation
-        "Shift_to_alt_end": cosine shift from start state towards alternate end state in response to given perturbation
-        "Goal_end_vs_random_pval": pvalue of cosine shift from start state towards goal end state by Wilcoxon
-            pvalue compares shift caused by perturbing given gene compared to random genes
-        "Alt_end_vs_random_pval": pvalue of cosine shift from start state towards alternate end state by Wilcoxon
-            pvalue compares shift caused by perturbing given gene compared to random genes
-        "Goal_end_FDR": Benjamini-Hochberg correction of "Goal_end_vs_random_pval"
-        "Alt_end_FDR": Benjamini-Hochberg correction of "Alt_end_vs_random_pval"
+        | "Shift_to_goal_end": cosine shift from start state towards goal end state in response to given perturbation
+        | "Shift_to_alt_end": cosine shift from start state towards alternate end state in response to given perturbation
+        | "Goal_end_vs_random_pval": pvalue of cosine shift from start state towards goal end state by Wilcoxon
+        |     pvalue compares shift caused by perturbing given gene compared to random genes
+        | "Alt_end_vs_random_pval": pvalue of cosine shift from start state towards alternate end state by Wilcoxon
+        |     pvalue compares shift caused by perturbing given gene compared to random genes
+        | "Goal_end_FDR": Benjamini-Hochberg correction of "Goal_end_vs_random_pval"
+        | "Alt_end_FDR": Benjamini-Hochberg correction of "Alt_end_vs_random_pval"
 
-        "Test_avg_shift": cosine shift in response to given perturbation in cells from test distribution
-        "Null_avg_shift": cosine shift in response to given perturbation in cells from null distribution (e.g. random cells)
-        "Test_vs_null_avg_shift": difference in cosine shift in cells from test vs. null distribution
-            (i.e. "Test_avg_shift" minus "Null_avg_shift")
-        "Test_vs_null_pval": pvalue of cosine shift in test vs. null distribution
-        "Test_vs_null_FDR": Benjamini-Hochberg correction of "Test_vs_null_pval"
-        "N_Detections_test": "N_Detections" in cells from test distribution
-        "N_Detections_null": "N_Detections" in cells from null distribution
+        | "Test_avg_shift": cosine shift in response to given perturbation in cells from test distribution
+        | "Null_avg_shift": cosine shift in response to given perturbation in cells from null distribution (e.g. random cells)
+        | "Test_vs_null_avg_shift": difference in cosine shift in cells from test vs. null distribution
+        |     (i.e. "Test_avg_shift" minus "Null_avg_shift")
+        | "Test_vs_null_pval": pvalue of cosine shift in test vs. null distribution
+        | "Test_vs_null_FDR": Benjamini-Hochberg correction of "Test_vs_null_pval"
+        | "N_Detections_test": "N_Detections" in cells from test distribution
+        | "N_Detections_null": "N_Detections" in cells from null distribution
 
-        "Anchor_shift": cosine shift in response to given perturbation of anchor gene
-        "Test_token_shift": cosine shift in response to given perturbation of test gene
-        "Sum_of_indiv_shifts": sum of cosine shifts in response to individually perturbing test and anchor genes
-        "Combo_shift": cosine shift in response to given perturbation of both anchor and test gene(s) in combination
-        "Combo_minus_sum_shift": difference of cosine shifts in response combo perturbation vs. sum of individual perturbations
-            (i.e. "Combo_shift" minus "Sum_of_indiv_shifts")
-        "Impact_component": whether the given perturbation was modeled to be within the impact component by the mixture model
-            1: within impact component; 0: not within impact component
-        "Impact_component_percent": percent of cells in which given perturbation was modeled to be within impact component
+        | "Anchor_shift": cosine shift in response to given perturbation of anchor gene
+        | "Test_token_shift": cosine shift in response to given perturbation of test gene
+        | "Sum_of_indiv_shifts": sum of cosine shifts in response to individually perturbing test and anchor genes
+        | "Combo_shift": cosine shift in response to given perturbation of both anchor and test gene(s) in combination
+        | "Combo_minus_sum_shift": difference of cosine shifts in response combo perturbation vs. sum of individual perturbations
+        |     (i.e. "Combo_shift" minus "Sum_of_indiv_shifts")
+        | "Impact_component": whether the given perturbation was modeled to be within the impact component by the mixture model
+        |     1: within impact component; 0: not within impact component
+        | "Impact_component_percent": percent of cells in which given perturbation was modeled to be within impact component
 
-        In case of aggregating gene shifts:
-        "Perturbed": ID(s) of gene(s) being perturbed
-        "Affected": ID of affected gene or "cell_emb" indicating the impact on the cell embedding as a whole
-        "Cosine_shift_mean": mean of cosine shift of modeled perturbation on affected gene or cell
-        "Cosine_shift_stdev": standard deviation of cosine shift of modeled perturbation on affected gene or cell
+        | In case of aggregating gene shifts:
+        | "Perturbed": ID(s) of gene(s) being perturbed
+        | "Affected": ID of affected gene or "cell_emb" indicating the impact on the cell embedding as a whole
+        | "Cosine_shift_mean": mean of cosine shift of modeled perturbation on affected gene or cell
+        | "Cosine_shift_stdev": standard deviation of cosine shift of modeled perturbation on affected gene or cell
         """
 
         if self.mode not in [

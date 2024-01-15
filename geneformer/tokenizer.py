@@ -1,17 +1,37 @@
 """
 Geneformer tokenizer.
 
-Input data:
-Required format: raw counts scRNAseq data without feature selection as .loom file
-Required row (gene) attribute: "ensembl_id"; Ensembl ID for each gene
-Required col (cell) attribute: "n_counts"; total read counts in that cell
-Optional col (cell) attribute: "filter_pass"; binary indicator of whether cell should be tokenized based on user-defined filtering criteria
-Optional col (cell) attributes: any other cell metadata can be passed on to the tokenized dataset as a custom attribute dictionary as shown below
+**Input data:**
 
-Usage:
-  from geneformer import TranscriptomeTokenizer
-  tk = TranscriptomeTokenizer({"cell_type": "cell_type", "organ_major": "organ_major"}, nproc=4)
-  tk.tokenize_data("data_directory", "output_directory", "output_prefix")
+| *Required format:* raw counts scRNAseq data without feature selection as .loom or anndata file.
+| *Required row (gene) attribute:* "ensembl_id"; Ensembl ID for each gene.
+| *Required col (cell) attribute:* "n_counts"; total read counts in that cell.
+
+| *Optional col (cell) attribute:* "filter_pass"; binary indicator of whether cell should be tokenized based on user-defined filtering criteria.
+| *Optional col (cell) attributes:* any other cell metadata can be passed on to the tokenized dataset as a custom attribute dictionary as shown below.
+
+**Usage:**
+
+.. code-block :: python
+
+    >>> from geneformer import TranscriptomeTokenizer
+    >>> tk = TranscriptomeTokenizer({"cell_type": "cell_type", "organ_major": "organ"}, nproc=4)
+    >>> tk.tokenize_data("data_directory", "output_directory", "output_prefix")
+
+**Description:**
+
+| Input data is a directory with .loom or .h5ad files containing raw counts from single cell RNAseq data, including all genes detected in the transcriptome without feature selection. The input file type is specified by the argument file_format in the tokenize_data function.
+
+| The discussion below references the .loom file format, but the analagous labels are required for .h5ad files, just that they will be column instead of row attributes and vice versa due to the transposed format of the two file types.
+
+| Genes should be labeled with Ensembl IDs (loom row attribute "ensembl_id"), which provide a unique identifer for conversion to tokens. Other forms of gene annotations (e.g. gene names) can be converted to Ensembl IDs via Ensembl Biomart. Cells should be labeled with the total read count in the cell (loom column attribute "n_counts") to be used for normalization.
+
+| No cell metadata is required, but custom cell attributes may be passed onto the tokenized dataset by providing a dictionary of custom attributes to be added, which is formatted as loom_col_attr_name : desired_dataset_col_attr_name. For example, if the original .loom dataset has column attributes "cell_type" and "organ_major" and one would like to retain these attributes as labels in the tokenized dataset with the new names "cell_type" and "organ", respectively, the following custom attribute dictionary should be provided: {"cell_type": "cell_type", "organ_major": "organ"}.
+
+| Additionally, if the original .loom file contains a cell column attribute called "filter_pass", this column will be used as a binary indicator of whether to include these cells in the tokenized data. All cells with "1" in this attribute will be tokenized, whereas the others will be excluded. One may use this column to indicate QC filtering or other criteria for selection for inclusion in the final tokenized dataset.
+
+| If one's data is in other formats besides .loom or .h5ad, one can use the relevant tools (such as Anndata tools) to convert the file to a .loom or .h5ad format prior to running the transcriptome tokenizer.
+
 """
 
 from __future__ import annotations
@@ -68,11 +88,11 @@ class TranscriptomeTokenizer:
         Initialize tokenizer.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         custom_attr_name_dict : None, dict
-            Dictionary of custom attributes to be added to the dataset.
-            Keys are the names of the attributes in the loom file.
-            Values are the names of the attributes in the dataset.
+            | Dictionary of custom attributes to be added to the dataset.
+            | Keys are the names of the attributes in the loom file.
+            | Values are the names of the attributes in the dataset.
         nproc : int
             Number of processes to use for dataset mapping.
         chunk_size: int = 512
@@ -119,7 +139,7 @@ class TranscriptomeTokenizer:
         Tokenize .loom files in data_directory and save as tokenized .dataset in output_directory.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         data_directory : Path
             Path to directory containing loom files or anndata files
         output_directory : Path

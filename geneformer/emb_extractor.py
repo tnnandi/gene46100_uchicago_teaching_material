@@ -1,29 +1,11 @@
 """
 Geneformer embedding extractor.
 
-Usage:
-  from geneformer import EmbExtractor
-  embex = EmbExtractor(model_type="CellClassifier",
-                       num_classes=3,
-                       emb_mode="cell",
-                       cell_emb_style="mean_pool",
-                       gene_emb_style="mean_pool",
-                       filter_data={"cell_type":["cardiomyocyte"]},
-                       max_ncells=1000,
-                       max_ncells_to_plot=1000,
-                       emb_layer=-1,
-                       emb_label=["disease","cell_type"],
-                       labels_to_plot=["disease","cell_type"],
-                       nproc=16,
-                       summary_stat=None)
-  embs = embex.extract_embs("path/to/model",
-                            "path/to/input_data",
-                            "path/to/output_directory",
-                            "output_prefix")
-  embex.plot_embs(embs=embs,
-                  plot_style="heatmap",
-                  output_directory="path/to/output_directory",
-                  output_prefix="output_prefix")
+**Description:**
+
+| Extracts gene or cell embeddings.
+| Plots cell embeddings as heatmaps or UMAPs.
+| Generates cell state embedding dictionary for use with InSilicoPerturber.
 
 """
 
@@ -414,51 +396,69 @@ class EmbExtractor:
         Initialize embedding extractor.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         model_type : {"Pretrained","GeneClassifier","CellClassifier"}
-            Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
+            | Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
         num_classes : int
-            If model is a gene or cell classifier, specify number of classes it was trained to classify.
-            For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
+            | If model is a gene or cell classifier, specify number of classes it was trained to classify.
+            | For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
         emb_mode : {"cell","gene"}
-            Whether to output cell or gene embeddings.
+            | Whether to output cell or gene embeddings.
         cell_emb_style : "mean_pool"
-            Method for summarizing cell embeddings.
-            Currently only option is mean pooling of gene embeddings for given cell.
+            | Method for summarizing cell embeddings.
+            | Currently only option is mean pooling of gene embeddings for given cell.
         gene_emb_style : "mean_pool"
-            Method for summarizing gene embeddings.
-            Currently only option is mean pooling of contextual gene embeddings for given gene.
+            | Method for summarizing gene embeddings.
+            | Currently only option is mean pooling of contextual gene embeddings for given gene.
         filter_data : None, dict
-            Default is to extract embeddings from all input data.
-            Otherwise, dictionary specifying .dataset column name and list of values to filter by.
+            | Default is to extract embeddings from all input data.
+            | Otherwise, dictionary specifying .dataset column name and list of values to filter by.
         max_ncells : None, int
-            Maximum number of cells to extract embeddings from.
-            Default is 1000 cells randomly sampled from input data.
-            If None, will extract embeddings from all cells.
+            | Maximum number of cells to extract embeddings from.
+            | Default is 1000 cells randomly sampled from input data.
+            | If None, will extract embeddings from all cells.
         emb_layer : {-1, 0}
-            Embedding layer to extract.
-            The last layer is most specifically weighted to optimize the given learning objective.
-            Generally, it is best to extract the 2nd to last layer to get a more general representation.
-            -1: 2nd to last layer
-            0: last layer
+            | Embedding layer to extract.
+            | The last layer is most specifically weighted to optimize the given learning objective.
+            | Generally, it is best to extract the 2nd to last layer to get a more general representation.
+            | -1: 2nd to last layer
+            | 0: last layer
         emb_label : None, list
-            List of column name(s) in .dataset to add as labels to embedding output.
+            | List of column name(s) in .dataset to add as labels to embedding output.
         labels_to_plot : None, list
-            Cell labels to plot.
-            Shown as color bar in heatmap.
-            Shown as cell color in umap.
-            Plotting umap requires labels to plot.
+            | Cell labels to plot.
+            | Shown as color bar in heatmap.
+            | Shown as cell color in umap.
+            | Plotting umap requires labels to plot.
         forward_batch_size : int
-            Batch size for forward pass.
+            | Batch size for forward pass.
         nproc : int
-            Number of CPU processes to use.
+            | Number of CPU processes to use.
         summary_stat : {None, "mean", "median", "exact_mean", "exact_median"}
-            If exact_mean or exact_median, outputs only exact mean or median embedding of input data.
-            If mean or median, outputs only approximated mean or median embedding of input data.
-            Non-exact recommended if encountering memory constraints while generating goal embedding positions.
-            Non-exact is slower but more memory-efficient.
+            | If exact_mean or exact_median, outputs only exact mean or median embedding of input data.
+            | If mean or median, outputs only approximated mean or median embedding of input data.
+            | Non-exact recommended if encountering memory constraints while generating goal embedding positions.
+            | Non-exact is slower but more memory-efficient.
         token_dictionary_file : Path
-            Path to pickle file containing token dictionary (Ensembl ID:token).
+            | Path to pickle file containing token dictionary (Ensembl ID:token).
+
+        Examples
+        ~~~~~~~~
+
+        .. code-block :: python
+
+            >>> from geneformer import EmbExtractor
+            >>> embex = EmbExtractor(model_type="CellClassifier",
+                ...    num_classes=3,
+                ...    emb_mode="cell",
+                ...    filter_data={"cell_type":["cardiomyocyte"]},
+                ...    max_ncells=1000,
+                ...    max_ncells_to_plot=1000,
+                ...    emb_layer=-1,
+                ...    emb_label=["disease","cell_type"],
+                ...    labels_to_plot=["disease","cell_type"],
+                ... )
+
         """
 
         self.model_type = model_type
@@ -533,20 +533,32 @@ class EmbExtractor:
         Extract embeddings from input data and save as results in output_directory.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         model_directory : Path
-            Path to directory containing model
+            | Path to directory containing model
         input_data_file : Path
-            Path to directory containing .dataset inputs
+            | Path to directory containing .dataset inputs
         output_directory : Path
-            Path to directory where embedding data will be saved as csv
+            | Path to directory where embedding data will be saved as csv
         output_prefix : str
-            Prefix for output file
+            | Prefix for output file
         output_torch_embs : bool
-            Whether or not to also output the embeddings as a tensor.
-            Note, if true, will output embeddings as both dataframe and tensor.
+            | Whether or not to also output the embeddings as a tensor.
+            | Note, if true, will output embeddings as both dataframe and tensor.
         cell_state : dict
-            Cell state key and value for state embedding extraction.
+            | Cell state key and value for state embedding extraction.
+
+        Examples
+        ~~~~~~~~
+
+        .. code-block :: python
+
+            >>> embs = embex.extract_embs("path/to/model",
+                ...    "path/to/input_data",
+                ...    "path/to/output_directory",
+                ...    "output_prefix",
+                ... )
+
         """
 
         filtered_input_data = pu.load_and_filter(
@@ -618,41 +630,43 @@ class EmbExtractor:
         Extract exact mean or exact median cell state embedding positions from input data and save as results in output_directory.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         cell_states_to_model : None, dict
-            Cell states to model if testing perturbations that achieve goal state change.
-            Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
-            state_key: key specifying name of column in .dataset that defines the start/goal states
-            start_state: value in the state_key column that specifies the start state
-            goal_state: value in the state_key column taht specifies the goal end state
-            alt_states: list of values in the state_key column that specify the alternate end states
-            For example: {"state_key": "disease",
-                          "start_state": "dcm",
-                          "goal_state": "nf",
-                          "alt_states": ["hcm", "other1", "other2"]}
+            | Cell states to model if testing perturbations that achieve goal state change.
+            | Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
+            | state_key: key specifying name of column in .dataset that defines the start/goal states
+            | start_state: value in the state_key column that specifies the start state
+            | goal_state: value in the state_key column taht specifies the goal end state
+            | alt_states: list of values in the state_key column that specify the alternate end states
+            | For example:
+            |      {"state_key": "disease",
+            |      "start_state": "dcm",
+            |      "goal_state": "nf",
+            |      "alt_states": ["hcm", "other1", "other2"]}
         model_directory : Path
-            Path to directory containing model
+            | Path to directory containing model
         input_data_file : Path
-            Path to directory containing .dataset inputs
+            | Path to directory containing .dataset inputs
         output_directory : Path
-            Path to directory where embedding data will be saved as csv
+            | Path to directory where embedding data will be saved as csv
         output_prefix : str
-            Prefix for output file
+            | Prefix for output file
         output_torch_embs : bool
-            Whether or not to also output the embeddings as a tensor.
-            Note, if true, will output embeddings as both dataframe and tensor.
+            | Whether or not to also output the embeddings as a tensor.
+            | Note, if true, will output embeddings as both dataframe and tensor.
 
         Outputs
-        ----------
-        Outputs state_embs_dict for use with in silico perturber.
-        Format is dictionary of embedding positions of each cell state to model shifts from/towards.
-        Keys specify each possible cell state to model.
-        Values are target embedding positions as torch.tensor.
-        For example: {"nf": emb_nf,
-                      "hcm": emb_hcm,
-                      "dcm": emb_dcm,
-                      "other1": emb_other1,
-                      "other2": emb_other2}
+        ~~~~~~~
+        | Outputs state_embs_dict for use with in silico perturber.
+        | Format is dictionary of embedding positions of each cell state to model shifts from/towards.
+        | Keys specify each possible cell state to model.
+        | Values are target embedding positions as torch.tensor.
+        | For example:
+        |      {"nf": emb_nf,
+        |      "hcm": emb_hcm,
+        |      "dcm": emb_dcm,
+        |      "other1": emb_other1,
+        |      "other2": emb_other2}
         """
 
         pu.validate_cell_states_to_model(cell_states_to_model)
@@ -708,21 +722,33 @@ class EmbExtractor:
         Plot embeddings, coloring by provided labels.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         embs : pandas.core.frame.DataFrame
-            Pandas dataframe containing embeddings output from extract_embs
+            | Pandas dataframe containing embeddings output from extract_embs
         plot_style : str
-            Style of plot: "heatmap" or "umap"
+            | Style of plot: "heatmap" or "umap"
         output_directory : Path
-            Path to directory where plots will be saved as pdf
+            | Path to directory where plots will be saved as pdf
         output_prefix : str
-            Prefix for output file
+            | Prefix for output file
         max_ncells_to_plot : None, int
-            Maximum number of cells to plot.
-            Default is 1000 cells randomly sampled from embeddings.
-            If None, will plot embeddings from all cells.
+            | Maximum number of cells to plot.
+            | Default is 1000 cells randomly sampled from embeddings.
+            | If None, will plot embeddings from all cells.
         kwargs_dict : dict
-            Dictionary of kwargs to pass to plotting function.
+            | Dictionary of kwargs to pass to plotting function.
+
+        Examples
+        ~~~~~~~~
+
+        .. code-block :: python
+
+            >>> embex.plot_embs(embs=embs,
+                ...    plot_style="heatmap",
+                ...    output_directory="path/to/output_directory",
+                ...    output_prefix="output_prefix",
+                ... )
+
         """
 
         if plot_style not in ["heatmap", "umap"]:

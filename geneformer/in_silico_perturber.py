@@ -1,28 +1,35 @@
 """
 Geneformer in silico perturber.
 
-Usage:
-  from geneformer import InSilicoPerturber
-  isp = InSilicoPerturber(perturb_type="delete",
-                          perturb_rank_shift=None,
-                          genes_to_perturb="all",
-                          combos=0,
-                          anchor_gene=None,
-                          model_type="CellClassifier",
-                          num_classes=0,
-                          emb_mode="cell",
-                          cell_emb_style="mean_pool",
-                          filter_data={"cell_type":["cardiomyocyte"]},
-                          cell_states_to_model={"state_key": "disease", "start_state": "dcm", "goal_state": "nf", "alt_states": ["hcm", "other1", "other2"]},
-                          state_embs_dict ={"nf": emb_nf, "hcm": emb_hcm, "dcm": emb_dcm, "other1": emb_other1, "other2": emb_other2},
-                          max_ncells=None,
-                          emb_layer=0,
-                          forward_batch_size=100,
-                          nproc=16)
-  isp.perturb_data("path/to/model",
-                   "path/to/input_data",
-                   "path/to/output_directory",
-                   "output_prefix")
+**Usage:**
+
+.. code-block :: python
+
+    >>> from geneformer import InSilicoPerturber
+    >>> isp = InSilicoPerturber(perturb_type="delete",
+        ...                     perturb_rank_shift=None,
+        ...                     genes_to_perturb="all",
+        ...                     model_type="CellClassifier",
+        ...                     num_classes=0,
+        ...                     emb_mode="cell",
+        ...                     filter_data={"cell_type":["cardiomyocyte"]},
+        ...                     cell_states_to_model={"state_key": "disease", "start_state": "dcm", "goal_state": "nf", "alt_states": ["hcm", "other1", "other2"]},
+        ...                     state_embs_dict ={"nf": emb_nf, "hcm": emb_hcm, "dcm": emb_dcm, "other1": emb_other1, "other2": emb_other2},
+        ...                     max_ncells=None,
+        ...                     emb_layer=0,
+        ...                     forward_batch_size=100,
+        ...                     nproc=16)
+    >>> isp.perturb_data("path/to/model",
+        ...              "path/to/input_data",
+        ...              "path/to/output_directory",
+        ...              "output_prefix")
+
+**Description:**
+
+| Performs in silico perturbation (e.g. deletion or overexpression) of defined set of genes or all genes in sample of cells.
+| Outputs impact of perturbation on cell or gene embeddings.
+| Output files are analyzed with ``in_silico_perturber_stats``.
+
 """
 
 import logging
@@ -94,89 +101,89 @@ class InSilicoPerturber:
         Initialize in silico perturber.
 
         Parameters
-        ----------
-        perturb_type : {"delete","overexpress","inhibit","activate"}
-            Type of perturbation.
-            "delete": delete gene from rank value encoding
-            "overexpress": move gene to front of rank value encoding
-            "inhibit": move gene to lower quartile of rank value encoding
-            "activate": move gene to higher quartile of rank value encoding
-        perturb_rank_shift : None, {1,2,3}
-            Number of quartiles by which to shift rank of gene.
-            For example, if perturb_type="activate" and perturb_rank_shift=1:
-                genes in 4th quartile will move to middle of 3rd quartile.
-                genes in 3rd quartile will move to middle of 2nd quartile.
-                genes in 2nd quartile will move to middle of 1st quartile.
-                genes in 1st quartile will move to front of rank value encoding.
-            For example, if perturb_type="inhibit" and perturb_rank_shift=2:
-                genes in 1st quartile will move to middle of 3rd quartile.
-                genes in 2nd quartile will move to middle of 4th quartile.
-                genes in 3rd or 4th quartile will move to bottom of rank value encoding.
+        ~~~~~~~~~~
+        perturb_type : {"delete", "overexpress", "inhibit", "activate"}
+            | Type of perturbation.
+            | "delete": delete gene from rank value encoding
+            | "overexpress": move gene to front of rank value encoding
+            | *(TBA)* "inhibit": move gene to lower quartile of rank value encoding
+            | *(TBA)* "activate": move gene to higher quartile of rank value encoding
+        *(TBA)* perturb_rank_shift : None, {1,2,3}
+            | Number of quartiles by which to shift rank of gene.
+            | For example, if perturb_type="activate" and perturb_rank_shift=1:
+            |     genes in 4th quartile will move to middle of 3rd quartile.
+            |     genes in 3rd quartile will move to middle of 2nd quartile.
+            |     genes in 2nd quartile will move to middle of 1st quartile.
+            |     genes in 1st quartile will move to front of rank value encoding.
+            | For example, if perturb_type="inhibit" and perturb_rank_shift=2:
+            |     genes in 1st quartile will move to middle of 3rd quartile.
+            |     genes in 2nd quartile will move to middle of 4th quartile.
+            |     genes in 3rd or 4th quartile will move to bottom of rank value encoding.
         genes_to_perturb : "all", list
-            Default is perturbing each gene detected in each cell in the dataset.
-            Otherwise, may provide a list of ENSEMBL IDs of genes to perturb.
-            If gene list is provided, then perturber will only test perturbing them all together
-            (rather than testing each possible combination of the provided genes).
+            | Default is perturbing each gene detected in each cell in the dataset.
+            | Otherwise, may provide a list of ENSEMBL IDs of genes to perturb.
+            | If gene list is provided, then perturber will only test perturbing them all together
+            | (rather than testing each possible combination of the provided genes).
         combos : {0,1}
-            Whether to perturb genes individually (0) or in pairs (1).
+            | Whether to perturb genes individually (0) or in pairs (1).
         anchor_gene : None, str
-            ENSEMBL ID of gene to use as anchor in combination perturbations.
-            For example, if combos=1 and anchor_gene="ENSG00000148400":
-                anchor gene will be perturbed in combination with each other gene.
-        model_type : {"Pretrained","GeneClassifier","CellClassifier"}
-            Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
+            | ENSEMBL ID of gene to use as anchor in combination perturbations.
+            | For example, if combos=1 and anchor_gene="ENSG00000148400":
+            |     anchor gene will be perturbed in combination with each other gene.
+        model_type : {"Pretrained", "GeneClassifier", "CellClassifier"}
+            | Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
         num_classes : int
-            If model is a gene or cell classifier, specify number of classes it was trained to classify.
-            For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
-        emb_mode : {"cell","cell_and_gene"}
-            Whether to output impact of perturbation on cell and/or gene embeddings.
-            Gene embedding shifts only available as compared to original cell, not comparing to goal state.
+            | If model is a gene or cell classifier, specify number of classes it was trained to classify.
+            | For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
+        emb_mode : {"cell", "cell_and_gene"}
+            | Whether to output impact of perturbation on cell and/or gene embeddings.
+            | Gene embedding shifts only available as compared to original cell, not comparing to goal state.
         cell_emb_style : "mean_pool"
-            Method for summarizing cell embeddings.
-            Currently only option is mean pooling of gene embeddings for given cell.
+            | Method for summarizing cell embeddings.
+            | Currently only option is mean pooling of gene embeddings for given cell.
         filter_data : None, dict
-            Default is to use all input data for in silico perturbation study.
-            Otherwise, dictionary specifying .dataset column name and list of values to filter by.
+            | Default is to use all input data for in silico perturbation study.
+            | Otherwise, dictionary specifying .dataset column name and list of values to filter by.
         cell_states_to_model : None, dict
-            Cell states to model if testing perturbations that achieve goal state change.
-            Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
-            state_key: key specifying name of column in .dataset that defines the start/goal states
-            start_state: value in the state_key column that specifies the start state
-            goal_state: value in the state_key column taht specifies the goal end state
-            alt_states: list of values in the state_key column that specify the alternate end states
-            For example: {"state_key": "disease",
-                          "start_state": "dcm",
-                          "goal_state": "nf",
-                          "alt_states": ["hcm", "other1", "other2"]}
+            | Cell states to model if testing perturbations that achieve goal state change.
+            | Four-item dictionary with keys: state_key, start_state, goal_state, and alt_states
+            | state_key: key specifying name of column in .dataset that defines the start/goal states
+            | start_state: value in the state_key column that specifies the start state
+            | goal_state: value in the state_key column taht specifies the goal end state
+            | alt_states: list of values in the state_key column that specify the alternate end states
+            | For example: {"state_key": "disease",
+            |               "start_state": "dcm",
+            |               "goal_state": "nf",
+            |               "alt_states": ["hcm", "other1", "other2"]}
         state_embs_dict : None, dict
-            Embedding positions of each cell state to model shifts from/towards (e.g. mean or median).
-            Dictionary with keys specifying each possible cell state to model.
-            Values are target embedding positions as torch.tensor.
-            For example: {"nf": emb_nf,
-                          "hcm": emb_hcm,
-                          "dcm": emb_dcm,
-                          "other1": emb_other1,
-                          "other2": emb_other2}
+            | Embedding positions of each cell state to model shifts from/towards (e.g. mean or median).
+            | Dictionary with keys specifying each possible cell state to model.
+            | Values are target embedding positions as torch.tensor.
+            | For example: {"nf": emb_nf,
+            |               "hcm": emb_hcm,
+            |               "dcm": emb_dcm,
+            |               "other1": emb_other1,
+            |               "other2": emb_other2}
         max_ncells : None, int
-            Maximum number of cells to test.
-            If None, will test all cells.
+            | Maximum number of cells to test.
+            | If None, will test all cells.
         cell_inds_to_perturb : "all", list
-            Default is perturbing each cell in the dataset.
-            Otherwise, may provide a dict of indices of cells to perturb with keys start_ind and end_ind.
-            start_ind: the first index to perturb.
-            end_ind: the last index to perturb (exclusive).
-            Indices will be selected *after* the filter_data criteria and sorting.
-            Useful for splitting extremely large datasets across separate GPUs.
+            | Default is perturbing each cell in the dataset.
+            | Otherwise, may provide a dict of indices of cells to perturb with keys start_ind and end_ind.
+            | start_ind: the first index to perturb.
+            | end_ind: the last index to perturb (exclusive).
+            | Indices will be selected *after* the filter_data criteria and sorting.
+            | Useful for splitting extremely large datasets across separate GPUs.
         emb_layer : {-1, 0}
-            Embedding layer to use for quantification.
-            0: last layer (recommended for questions closely tied to model's training objective)
-            -1: 2nd to last layer (recommended for questions requiring more general representations)
+            | Embedding layer to use for quantification.
+            | 0: last layer (recommended for questions closely tied to model's training objective)
+            | -1: 2nd to last layer (recommended for questions requiring more general representations)
         forward_batch_size : int
-            Batch size for forward pass.
+            | Batch size for forward pass.
         nproc : int
-            Number of CPU processes to use.
+            | Number of CPU processes to use.
         token_dictionary_file : Path
-            Path to pickle file containing token dictionary (Ensembl ID:token).
+            | Path to pickle file containing token dictionary (Ensembl ID:token).
         """
 
         self.perturb_type = perturb_type
@@ -392,15 +399,15 @@ class InSilicoPerturber:
         Perturb genes in input data and save as results in output_directory.
 
         Parameters
-        ----------
+        ~~~~~~~~~~
         model_directory : Path
-            Path to directory containing model
+            | Path to directory containing model
         input_data_file : Path
-            Path to directory containing .dataset inputs
+            | Path to directory containing .dataset inputs
         output_directory : Path
-            Path to directory where perturbation data will be saved as batched pickle files
+            | Path to directory where perturbation data will be saved as batched pickle files
         output_prefix : str
-            Prefix for output files
+            | Prefix for output files
         """
 
         ### format output path ###
