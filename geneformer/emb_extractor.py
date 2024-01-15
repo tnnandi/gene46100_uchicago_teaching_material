@@ -397,12 +397,12 @@ class EmbExtractor:
 
         **Parameters:**
 
-        model_type : {"Pretrained","GeneClassifier","CellClassifier"}
+        model_type : {"Pretrained", "GeneClassifier", "CellClassifier"}
             | Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
         num_classes : int
             | If model is a gene or cell classifier, specify number of classes it was trained to classify.
             | For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
-        emb_mode : {"cell","gene"}
+        emb_mode : {"cell", "gene"}
             | Whether to output cell or gene embeddings.
         cell_emb_style : "mean_pool"
             | Method for summarizing cell embeddings.
@@ -448,15 +448,14 @@ class EmbExtractor:
 
             >>> from geneformer import EmbExtractor
             >>> embex = EmbExtractor(model_type="CellClassifier",
-                ...    num_classes=3,
-                ...    emb_mode="cell",
-                ...    filter_data={"cell_type":["cardiomyocyte"]},
-                ...    max_ncells=1000,
-                ...    max_ncells_to_plot=1000,
-                ...    emb_layer=-1,
-                ...    emb_label=["disease","cell_type"],
-                ...    labels_to_plot=["disease","cell_type"],
-                ... )
+            ...         num_classes=3,
+            ...         emb_mode="cell",
+            ...         filter_data={"cell_type":["cardiomyocyte"]},
+            ...         max_ncells=1000,
+            ...         max_ncells_to_plot=1000,
+            ...         emb_layer=-1,
+            ...         emb_label=["disease", "cell_type"],
+            ...         labels_to_plot=["disease", "cell_type"])
 
         """
 
@@ -552,10 +551,9 @@ class EmbExtractor:
         .. code-block :: python
 
             >>> embs = embex.extract_embs("path/to/model",
-                ...    "path/to/input_data",
-                ...    "path/to/output_directory",
-                ...    "output_prefix",
-                ... )
+            ...                           "path/to/input_data",
+            ...                           "path/to/output_directory",
+            ...                           "output_prefix")
 
         """
 
@@ -741,10 +739,9 @@ class EmbExtractor:
         .. code-block :: python
 
             >>> embex.plot_embs(embs=embs,
-                ...    plot_style="heatmap",
-                ...    output_directory="path/to/output_directory",
-                ...    output_prefix="output_prefix",
-                ... )
+            ...                 plot_style="heatmap",
+            ...                 output_directory="path/to/output_directory",
+            ...                 output_prefix="output_prefix")
 
         """
 

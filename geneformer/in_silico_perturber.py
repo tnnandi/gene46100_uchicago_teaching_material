@@ -7,22 +7,22 @@ Geneformer in silico perturber.
 
     >>> from geneformer import InSilicoPerturber
     >>> isp = InSilicoPerturber(perturb_type="delete",
-        ...                     perturb_rank_shift=None,
-        ...                     genes_to_perturb="all",
-        ...                     model_type="CellClassifier",
-        ...                     num_classes=0,
-        ...                     emb_mode="cell",
-        ...                     filter_data={"cell_type":["cardiomyocyte"]},
-        ...                     cell_states_to_model={"state_key": "disease", "start_state": "dcm", "goal_state": "nf", "alt_states": ["hcm", "other1", "other2"]},
-        ...                     state_embs_dict ={"nf": emb_nf, "hcm": emb_hcm, "dcm": emb_dcm, "other1": emb_other1, "other2": emb_other2},
-        ...                     max_ncells=None,
-        ...                     emb_layer=0,
-        ...                     forward_batch_size=100,
-        ...                     nproc=16)
+    ...                         perturb_rank_shift=None,
+    ...                         genes_to_perturb="all",
+    ...                         model_type="CellClassifier",
+    ...                         num_classes=0,
+    ...                         emb_mode="cell",
+    ...                         filter_data={"cell_type":["cardiomyocyte"]},
+    ...                         cell_states_to_model={"state_key": "disease", "start_state": "dcm", "goal_state": "nf", "alt_states": ["hcm", "other1", "other2"]},
+    ...                         state_embs_dict ={"nf": emb_nf, "hcm": emb_hcm, "dcm": emb_dcm, "other1": emb_other1, "other2": emb_other2},
+    ...                         max_ncells=None,
+    ...                         emb_layer=0,
+    ...                         forward_batch_size=100,
+    ...                         nproc=16)
     >>> isp.perturb_data("path/to/model",
-        ...              "path/to/input_data",
-        ...              "path/to/output_directory",
-        ...              "output_prefix")
+    ...                  "path/to/input_data",
+    ...                  "path/to/output_directory",
+    ...                  "output_prefix")
 
 **Description:**
 

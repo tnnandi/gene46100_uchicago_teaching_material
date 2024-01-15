@@ -7,15 +7,14 @@ Geneformer in silico perturber stats generator.
 
     >>> from geneformer import InSilicoPerturberStats
     >>> ispstats = InSilicoPerturberStats(mode="goal_state_shift",
-        ...    cell_states_to_model={"state_key": "disease",
-        ...                          "start_state": "dcm",
-        ...                          "goal_state": "nf",
-        ...                          "alt_states": ["hcm", "other1", "other2"]})
-        ... )
+    ...    cell_states_to_model={"state_key": "disease",
+    ...                          "start_state": "dcm",
+    ...                          "goal_state": "nf",
+    ...                          "alt_states": ["hcm", "other1", "other2"]})
     >>> ispstats.get_stats("path/to/input_data",
-        ...                None,
-        ...                "path/to/output_directory",
-        ...                "output_prefix")
+    ...                    None,
+    ...                    "path/to/output_directory",
+    ...                    "output_prefix")
 
 **Description:**
 
