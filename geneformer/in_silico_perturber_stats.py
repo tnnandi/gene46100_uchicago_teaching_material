@@ -19,7 +19,7 @@ Geneformer in silico perturber stats generator.
 
 **Description:**
 
-| Collates data or calculates stats for in silico perturbations based on type of statistics specified in InSilicoPerturberStats.
+| Aggregates data or calculates stats for in silico perturbations based on type of statistics specified in InSilicoPerturberStats.
 | Input data is raw in silico perturbation results in the form of dictionaries outputted by ``in_silico_perturber``.
 
 """
@@ -864,8 +864,8 @@ class InSilicoPerturberStats:
             | Path to directory where perturbation data will be saved as .csv
         output_prefix : str
             | Prefix for output .csv
-        null_dict_list: dict
-            | List of loaded null distribtion dictionary if more than one comparison vs. the null is to be performed
+        null_dict_list: list[dict]
+            | List of loaded null distribution dictionary if more than one comparison vs. the null is to be performed
 
         **Outputs:**
 
