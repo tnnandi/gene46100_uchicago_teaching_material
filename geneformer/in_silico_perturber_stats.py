@@ -158,7 +158,7 @@ def token_tuple_to_ensembl_ids(token_tuple, gene_token_id_dict):
     try:
         return tuple([gene_token_id_dict.get(i, np.nan) for i in token_tuple])
     except TypeError:
-        return tuple(gene_token_id_dict.get(token_tuple, np.nan))
+        return gene_token_id_dict.get(token_tuple, np.nan)
 
 
 def n_detections(token, dict_list, mode, anchor_token):
@@ -208,7 +208,7 @@ def find(variable, x):
     try:
         if x in variable:  # Test if variable is iterable and contains x
             return True
-    except TypeError:
+    except (ValueError, TypeError):
         return x == variable  # Test if variable is x if non-iterable
 
 
@@ -239,8 +239,9 @@ def isp_aggregate_gene_shifts(
         cos_sims_df[cos_sims_df["Gene"] == k[0]]["Ensembl_ID"][0]
         for k, v in cos_data_mean.items()
     ]
+
     cos_sims_full_df["Affected"] = [k[1] for k, v in cos_data_mean.items()]
-    cos_sims_full_df["Affected_Gene_name"] = [
+    cos_sims_full_df["Affected_gene_name"] = [
         gene_id_name_dict.get(gene_token_id_dict.get(token, np.nan), np.nan)
         for token in cos_sims_full_df["Affected"]
     ]
@@ -1026,7 +1027,7 @@ class InSilicoPerturberStats:
         cos_sims_df.to_csv(output_path)
 
     def token_to_gene_name(self, item):
-        if isinstance(item, int):
+        if np.issubdtype(type(item), np.integer):
             return self.gene_id_name_dict.get(
                 self.gene_token_id_dict.get(item, np.nan), np.nan
             )
