@@ -263,7 +263,7 @@ class InSilicoPerturber:
                 "Current valid options for 'perturb_type': 'delete' or 'overexpress'"
             )
             raise
-        if (self.combos > 0) and (self.anchor_token is None):
+        if (self.combos > 0) and (self.anchor_gene is None):
             logger.error(
                 "Combination perturbation without anchor gene is currently under development. "
                 "Currently, must provide anchor gene for combination perturbation."
@@ -416,7 +416,9 @@ class InSilicoPerturber:
         )
 
         ### load model and define parameters ###
-        model = pu.load_model(self.model_type, self.num_classes, model_directory)
+        model = pu.load_model(
+            self.model_type, self.num_classes, model_directory, mode="eval"
+        )
         self.max_len = pu.get_model_input_size(model)
         layer_to_quant = pu.quant_layers(model) + self.emb_layer
 

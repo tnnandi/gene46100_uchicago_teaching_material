@@ -108,28 +108,36 @@ def slice_by_inds_to_perturb(filtered_input_data, cell_inds_to_perturb):
 
 
 # load model to GPU
-def load_model(model_type, num_classes, model_directory):
+def load_model(model_type, num_classes, model_directory, mode):
+    if mode == "eval":
+        output_hidden_states = True
+    elif mode == "train":
+        output_hidden_states = False
+
     if model_type == "Pretrained":
         model = BertForMaskedLM.from_pretrained(
-            model_directory, output_hidden_states=True, output_attentions=False
+            model_directory,
+            output_hidden_states=output_hidden_states,
+            output_attentions=False,
         )
     elif model_type == "GeneClassifier":
         model = BertForTokenClassification.from_pretrained(
             model_directory,
             num_labels=num_classes,
-            output_hidden_states=True,
+            output_hidden_states=output_hidden_states,
             output_attentions=False,
         )
     elif model_type == "CellClassifier":
         model = BertForSequenceClassification.from_pretrained(
             model_directory,
             num_labels=num_classes,
-            output_hidden_states=True,
+            output_hidden_states=output_hidden_states,
             output_attentions=False,
         )
-    # put the model in eval mode for fwd pass
-    model.eval()
-    model = model.to("cuda:0")
+    # if eval mode, put the model in eval mode for fwd pass
+    if mode == "eval":
+        model.eval()
+    model = model.to("cuda")
     return model
 
 
