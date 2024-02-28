@@ -43,12 +43,13 @@ from pathlib import Path
 from typing import Literal
 
 import anndata as ad
-import loompy as lp
 import numpy as np
 import scipy.sparse as sp
 from datasets import Dataset
 
-warnings.filterwarnings("ignore", message=".*The 'nopython' keyword.*")
+warnings.filterwarnings("ignore", message=".*The 'nopython' keyword.*")  # noqa
+import loompy as lp  # noqa
+
 logger = logging.getLogger(__name__)
 
 GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
@@ -81,7 +82,7 @@ class TranscriptomeTokenizer:
         custom_attr_name_dict=None,
         nproc=1,
         chunk_size=512,
-        input_size=2048,
+        model_input_size=2048,
         special_token=False,
         gene_median_file=GENE_MEDIAN_FILE,
         token_dictionary_file=TOKEN_DICTIONARY_FILE,
@@ -95,10 +96,10 @@ class TranscriptomeTokenizer:
             | Values are the names of the attributes in the dataset.
         nproc : int
             | Number of processes to use for dataset mapping.
-        chunk_size: int = 512
+        chunk_size : int = 512
             | Chunk size for anndata tokenizer.
-        input_size: int = 2048
-            | Input size for tokenization
+        model_input_size: int = 2048
+            | Max input size of model to truncate input to.
         special_token: bool = False
             | Option to add CLS and SEP tokens
         gene_median_file : Path
@@ -117,7 +118,7 @@ class TranscriptomeTokenizer:
         self.chunk_size = chunk_size
 
         # input size for tokenization
-        self.input_size = input_size
+        self.model_input_size = model_input_size
 
         # add CLS and SEP tokens
         self.special_token = special_token
@@ -163,7 +164,9 @@ class TranscriptomeTokenizer:
             Path(data_directory), file_format
         )
         tokenized_dataset = self.create_dataset(
-            tokenized_cells, cell_metadata, use_generator=use_generator
+            tokenized_cells,
+            cell_metadata,
+            use_generator=use_generator,
         )
 
         output_path = (Path(output_directory) / output_prefix).with_suffix(".dataset")
@@ -332,7 +335,7 @@ class TranscriptomeTokenizer:
                         file_cell_metadata[k] += subview.ca[k].tolist()
                 else:
                     file_cell_metadata = None
-                    
+
         return tokenized_cells, file_cell_metadata
 
     def create_dataset(
@@ -367,12 +370,20 @@ class TranscriptomeTokenizer:
 
             # Truncate/Crop input_ids to input size
             if self.special_token:
-                example["input_ids"] = example["input_ids"][0:self.input_size-2] # truncate to leave space for CLS and SEP token
-                example["input_ids"] = np.insert(example["input_ids"], 0, self.gene_token_dict.get("<cls>"))
-                example["input_ids"] = np.insert(example["input_ids"], len(example["input_ids"]), self.gene_token_dict.get("<sep>"))
+                example["input_ids"] = example["input_ids"][
+                    0 : self.model_input_size - 2
+                ]  # truncate to leave space for CLS and SEP token
+                example["input_ids"] = np.insert(
+                    example["input_ids"], 0, self.gene_token_dict.get("<cls>")
+                )
+                example["input_ids"] = np.insert(
+                    example["input_ids"],
+                    len(example["input_ids"]),
+                    self.gene_token_dict.get("<sep>"),
+                )
             else:
                 # Truncate/Crop input_ids to input size
-                example["input_ids"] = example["input_ids"][0:self.input_size]
+                example["input_ids"] = example["input_ids"][0 : self._model_input_size]
             example["length"] = len(example["input_ids"])
 
             return example

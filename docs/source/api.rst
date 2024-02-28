@@ -9,6 +9,14 @@ Tokenizer
 
    geneformer.tokenizer
 
+Classifier
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   geneformer.classifier
+
 Embedding Extractor
 -------------------
 

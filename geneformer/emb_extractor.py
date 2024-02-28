@@ -17,7 +17,6 @@ from pathlib import Path
 
 import anndata
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import scanpy as sc
 import seaborn as sns
@@ -303,13 +302,6 @@ def make_colorbar(embs_df, label):
     cell_type_colors = gen_heatmap_class_colors(labels, embs_df)
     label_colors = pd.DataFrame(cell_type_colors, columns=[label])
 
-    for i, row in label_colors.iterrows():
-        colors = row[0]
-        if len(colors) != 3 or any(np.isnan(colors)):
-            print(i, colors)
-
-    label_colors.isna().sum()
-
     # create dictionary for colors and classes
     label_color_dict = gen_heatmap_class_dict(labels, label_colors[label])
     return label_colors, label_color_dict
@@ -565,7 +557,9 @@ class EmbExtractor:
                 filtered_input_data, cell_state, self.nproc
             )
         downsampled_data = pu.downsample_and_sort(filtered_input_data, self.max_ncells)
-        model = pu.load_model(self.model_type, self.num_classes, model_directory, mode = "eval")
+        model = pu.load_model(
+            self.model_type, self.num_classes, model_directory, mode="eval"
+        )
         layer_to_quant = pu.quant_layers(model) + self.emb_layer
         embs = get_embs(
             model,

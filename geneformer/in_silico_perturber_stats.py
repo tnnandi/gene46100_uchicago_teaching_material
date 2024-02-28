@@ -801,6 +801,12 @@ class InSilicoPerturberStats:
                         logger.error("All states must be unique.")
                         raise
 
+            elif set(self.cell_states_to_model.keys()) == {
+                "state_key",
+                "start_state",
+                "goal_state",
+            }:
+                self.cell_states_to_model["alt_states"] = []
             else:
                 logger.error(
                     "cell_states_to_model must only have the following four keys: "
