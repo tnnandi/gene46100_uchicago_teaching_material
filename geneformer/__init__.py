@@ -1,5 +1,4 @@
 # ruff: noqa: F401
-from . import classifier  # noqa
 from . import (
     collator_for_classification,
     emb_extractor,
@@ -8,7 +7,6 @@ from . import (
     pretrainer,
     tokenizer,
 )
-from .classifier import Classifier
 from .collator_for_classification import (
     DataCollatorForCellClassification,
     DataCollatorForGeneClassification,
@@ -18,3 +16,6 @@ from .in_silico_perturber import InSilicoPerturber
 from .in_silico_perturber_stats import InSilicoPerturberStats
 from .pretrainer import GeneformerPretrainer
 from .tokenizer import TranscriptomeTokenizer
+
+from . import classifier  # noqa # isort:skip
+from .classifier import Classifier  # noqa # isort:skip
