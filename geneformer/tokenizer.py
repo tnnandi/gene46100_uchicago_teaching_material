@@ -89,7 +89,9 @@ class TranscriptomeTokenizer:
     ):
         """
         Initialize tokenizer.
+
         **Parameters:**
+
         custom_attr_name_dict : None, dict
             | Dictionary of custom attributes to be added to the dataset.
             | Keys are the names of the attributes in the loom file.
@@ -98,15 +100,16 @@ class TranscriptomeTokenizer:
             | Number of processes to use for dataset mapping.
         chunk_size : int = 512
             | Chunk size for anndata tokenizer.
-        model_input_size: int = 2048
+        model_input_size : int = 2048
             | Max input size of model to truncate input to.
-        special_token: bool = False
-            | Option to add CLS and SEP tokens
+        special_token : bool = False
+            | Adds CLS token before and SEP token after rank value encoding.
         gene_median_file : Path
             | Path to pickle file containing dictionary of non-zero median
             | gene expression values across Genecorpus-30M.
         token_dictionary_file : Path
             | Path to pickle file containing token dictionary (Ensembl IDs:token).
+
         """
         # dictionary of custom attributes {output dataset column name: input .loom column name}
         self.custom_attr_name_dict = custom_attr_name_dict
@@ -148,7 +151,9 @@ class TranscriptomeTokenizer:
     ):
         """
         Tokenize .loom files in data_directory and save as tokenized .dataset in output_directory.
+
         **Parameters:**
+
         data_directory : Path
             | Path to directory containing loom files or anndata files
         output_directory : Path
@@ -159,6 +164,7 @@ class TranscriptomeTokenizer:
             | Format of input files. Can be "loom" or "h5ad".
         use_generator : bool
             | Whether to use generator or dict for tokenization.
+
         """
         tokenized_cells, cell_metadata = self.tokenize_files(
             Path(data_directory), file_format

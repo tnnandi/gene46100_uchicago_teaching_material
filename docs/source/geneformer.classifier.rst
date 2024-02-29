@@ -6,4 +6,5 @@ geneformer.classifier
    :undoc-members:
    :show-inheritance:
    :exclude-members:
+        valid_option_dict,
         validate_options

@@ -3,14 +3,11 @@ Geneformer classifier.
 
 **Input data:**
 
-Cell state classifier:
-| Single-cell transcriptomes as Geneformer rank value encodings with cell state labels
-| in Geneformer .dataset format (generated from single-cell RNAseq data by tokenizer.py)
+| Cell state classifier:
+| Single-cell transcriptomes as Geneformer rank value encodings with cell state labels in Geneformer .dataset format (generated from single-cell RNAseq data by tokenizer.py)
 
-Gene classifier:
-| Dictionary in format {Gene_label: list(genes)} for gene labels
-| and single-cell transcriptomes as Geneformer rank value encodings
-| in Geneformer .dataset format (generated from single-cell RNAseq data by tokenizer.py)
+| Gene classifier:
+| Dictionary in format {Gene_label: list(genes)} for gene labels and single-cell transcriptomes as Geneformer rank value encodings in Geneformer .dataset format (generated from single-cell RNAseq data by tokenizer.py)
 
 **Usage:**
 
