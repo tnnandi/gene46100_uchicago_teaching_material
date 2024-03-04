@@ -201,10 +201,10 @@ def plot_ROC(roc_metric_dict, model_style_dict, title, output_dir, output_prefix
     plt.ylabel("True Positive Rate")
     plt.title(title)
     plt.legend(loc="lower right")
-    plt.show()
 
     output_file = (Path(output_dir) / f"{output_prefix}_roc").with_suffix(".pdf")
     plt.savefig(output_file, bbox_inches="tight")
+    plt.show()
 
 
 # plot confusion matrix

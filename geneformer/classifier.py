@@ -30,7 +30,7 @@ Geneformer classifier.
     ...                           id_class_dict_file=f"path/to/output_directory/{output_prefix}_id_class_dict.pkl",
     ...                           output_directory="path/to/output_directory",
     ...                           output_prefix="output_prefix",
-    ...                           predict=True)
+    ...                           predict_eval=True)
     >>> cc.plot_conf_mat(conf_mat_dict={"Geneformer": all_metrics["conf_matrix"]},
     ...                  output_directory="path/to/output_directory",
     ...                  output_prefix="output_prefix",
@@ -308,7 +308,7 @@ class Classifier:
         output_directory,
         output_prefix,
         split_id_dict=None,
-        test_size=0,
+        test_size=None,
         attr_to_split=None,
         attr_to_balance=None,
         max_trials=100,
@@ -417,27 +417,48 @@ class Classifier:
             data_dict["test"].save_to_disk(test_data_output_path)
         elif (test_size is not None) and (self.classifier == "cell"):
             if 1 > test_size > 0:
-                data_dict, balance_df = cu.balance_attr_splits(
-                    data,
-                    attr_to_split,
-                    attr_to_balance,
-                    test_size,
-                    max_trials,
-                    pval_threshold,
-                    self.cell_state_dict["state_key"],
-                    self.nproc,
-                )
-                balance_df.to_csv(
-                    f"{output_directory}/{output_prefix}_train_test_balance_df.csv"
-                )
-                train_data_output_path = (
-                    Path(output_directory) / f"{output_prefix}_labeled_train"
+                if attr_to_split is None:
+                    data_dict = data.train_test_split(
+                        test_size=test_size,
+                        stratify_by_column=self.stratify_splits_col,
+                        seed=42,
+                    )
+                    train_data_output_path = (
+                        Path(output_directory) / f"{output_prefix}_labeled_train"
+                    ).with_suffix(".dataset")
+                    test_data_output_path = (
+                        Path(output_directory) / f"{output_prefix}_labeled_test"
+                    ).with_suffix(".dataset")
+                    data_dict["train"].save_to_disk(train_data_output_path)
+                    data_dict["test"].save_to_disk(test_data_output_path)
+                else:
+                    data_dict, balance_df = cu.balance_attr_splits(
+                        data,
+                        attr_to_split,
+                        attr_to_balance,
+                        test_size,
+                        max_trials,
+                        pval_threshold,
+                        self.cell_state_dict["state_key"],
+                        self.nproc,
+                    )
+                    balance_df.to_csv(
+                        f"{output_directory}/{output_prefix}_train_test_balance_df.csv"
+                    )
+                    train_data_output_path = (
+                        Path(output_directory) / f"{output_prefix}_labeled_train"
+                    ).with_suffix(".dataset")
+                    test_data_output_path = (
+                        Path(output_directory) / f"{output_prefix}_labeled_test"
+                    ).with_suffix(".dataset")
+                    data_dict["train"].save_to_disk(train_data_output_path)
+                    data_dict["test"].save_to_disk(test_data_output_path)
+            else:
+                data_output_path = (
+                    Path(output_directory) / f"{output_prefix}_labeled"
                 ).with_suffix(".dataset")
-                test_data_output_path = (
-                    Path(output_directory) / f"{output_prefix}_labeled_test"
-                ).with_suffix(".dataset")
-                data_dict["train"].save_to_disk(train_data_output_path)
-                data_dict["test"].save_to_disk(test_data_output_path)
+                data.save_to_disk(data_output_path)
+                print(data_output_path)
         else:
             data_output_path = (
                 Path(output_directory) / f"{output_prefix}_labeled"
@@ -1012,7 +1033,7 @@ class Classifier:
         model = pu.load_model(model_type, num_classes, model_directory, "eval")
 
         # evaluate the model
-        results = self.evaluate_model(
+        result = self.evaluate_model(
             model,
             num_classes,
             id_class_dict,
@@ -1023,24 +1044,21 @@ class Classifier:
         )
 
         all_conf_mat_df = pd.DataFrame(
-            results["conf_mat"],
+            result["conf_mat"],
             columns=id_class_dict.values(),
             index=id_class_dict.values(),
         )
         all_metrics = {
             "conf_matrix": all_conf_mat_df,
-            "macro_f1": results["macro_f1"],
-            "acc": results["acc"],
+            "macro_f1": result["macro_f1"],
+            "acc": result["acc"],
         }
         all_roc_metrics = None  # roc metrics not reported for multiclass
+
         if num_classes == 2:
             mean_fpr = np.linspace(0, 1, 100)
-            all_tpr = [result["roc_metrics"]["interp_tpr"] for result in results]
-            all_roc_auc = [result["roc_metrics"]["auc"] for result in results]
-            all_tpr_wt = [result["roc_metrics"]["tpr_wt"] for result in results]
-            mean_tpr, roc_auc, roc_auc_sd = eu.get_cross_valid_roc_metrics(
-                all_tpr, all_roc_auc, all_tpr_wt
-            )
+            mean_tpr = result["roc_metrics"]["interp_tpr"]
+            all_roc_auc = result["roc_metrics"]["auc"]
             all_roc_metrics = {
                 "mean_tpr": mean_tpr,
                 "mean_fpr": mean_fpr,
@@ -1137,7 +1155,7 @@ class Classifier:
 
         predictions_file : path
             | Path of model predictions output to plot
-            | (saved output from self.validate if predict=True)
+            | (saved output from self.validate if predict_eval=True)
             | (or saved output from self.evaluate_saved_model)
         id_class_dict_file : Path
             | Path to _id_class_dict.pkl previously prepared by Classifier.prepare_data
@@ -1173,7 +1191,7 @@ class Classifier:
                 predictions_logits = np.array(predictions["predictions"])
                 true_ids = predictions["label_ids"]
         else:
-            # format is output from self.validate if predict=True
+            # format is output from self.validate if predict_eval=True
             predictions_logits = predictions.predictions
             true_ids = predictions.label_ids
 
