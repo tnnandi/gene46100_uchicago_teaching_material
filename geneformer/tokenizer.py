@@ -389,7 +389,7 @@ class TranscriptomeTokenizer:
                 )
             else:
                 # Truncate/Crop input_ids to input size
-                example["input_ids"] = example["input_ids"][0 : self._model_input_size]
+                example["input_ids"] = example["input_ids"][0 : self.model_input_size]
             example["length"] = len(example["input_ids"])
 
             return example
