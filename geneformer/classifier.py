@@ -82,11 +82,12 @@ class Classifier:
         "training_args": {None, dict},
         "freeze_layers": {int},
         "num_crossval_splits": {0, 1, 5},
-        "eval_size": {int, float},
+        "split_sizes": {None, dict},
         "no_eval": {bool},
         "stratify_splits_col": {None, str},
         "forward_batch_size": {int},
         "nproc": {int},
+        "ngpu": {int},
     }
 
     def __init__(
@@ -99,13 +100,15 @@ class Classifier:
         max_ncells=None,
         max_ncells_per_class=None,
         training_args=None,
+        ray_config=None,
         freeze_layers=0,
         num_crossval_splits=1,
-        eval_size=0.2,
+        split_sizes={"train": 0.8, "valid": 0.1, "test": 0.1},
         stratify_splits_col=None,
         no_eval=False,
         forward_batch_size=100,
         nproc=4,
+        ngpu=1,
     ):
         """
         Initialize Geneformer classifier.
@@ -152,15 +155,18 @@ class Classifier:
             | Otherwise, will use the Hugging Face defaults:
             | https://huggingface.co/docs/transformers/main_classes/trainer#transformers.TrainingArguments
             | Note: Hyperparameter tuning is highly recommended, rather than using defaults.
+        ray_config : None, dict
+            | Training argument ranges for tuning hyperparameters with Ray.
         freeze_layers : int
             | Number of layers to freeze from fine-tuning.
             | 0: no layers will be frozen; 2: first two layers will be frozen; etc.
         num_crossval_splits : {0, 1, 5}
             | 0: train on all data without splitting
-            | 1: split data into train and eval sets by designated eval_size
-            | 5: split data into 5 folds of train and eval sets by designated eval_size
-        eval_size : None, float
-            | Proportion of data to hold out for evaluation (e.g. 0.2 if intending 80:20 train/eval split)
+            | 1: split data into train and eval sets by designated split_sizes["valid"]
+            | 5: split data into 5 folds of train and eval sets by designated split_sizes["valid"]
+        split_sizes : None, dict
+            | Dictionary of proportion of data to hold out for train, validation, and test sets
+            | {"train": 0.8, "valid": 0.1, "test": 0.1} if intending 80/10/10 train/valid/test split
         stratify_splits_col : None, str
             | Name of column in .dataset to be used for stratified splitting.
             | Proportion of each class in this column will be the same in the splits as in the original dataset.
@@ -171,6 +177,8 @@ class Classifier:
             | Batch size for forward pass (for evaluation, not training).
         nproc : int
             | Number of CPU processes to use.
+        ngpu : int
+            | Number of GPUs available.
 
         """
 
@@ -182,13 +190,19 @@ class Classifier:
         self.max_ncells = max_ncells
         self.max_ncells_per_class = max_ncells_per_class
         self.training_args = training_args
+        self.ray_config = ray_config
         self.freeze_layers = freeze_layers
         self.num_crossval_splits = num_crossval_splits
-        self.eval_size = eval_size
+        self.split_sizes = split_sizes
+        self.train_size = self.split_sizes["train"]
+        self.valid_size = self.split_sizes["valid"]
+        self.oos_test_size = self.split_sizes["test"]
+        self.eval_size = self.valid_size / (self.train_size + self.valid_size)
         self.stratify_splits_col = stratify_splits_col
         self.no_eval = no_eval
         self.forward_batch_size = forward_batch_size
         self.nproc = nproc
+        self.ngpu = ngpu
 
         if self.training_args is None:
             logger.warning(
@@ -301,6 +315,9 @@ class Classifier:
                     "Gene_class_dict should contain at least 2 gene classes to classify."
                 )
                 raise
+        if sum(self.split_sizes.values()) != 1:
+            logger.error("Train, validation, and test proportions should sum to 1.")
+            raise
 
     def prepare_data(
         self,
@@ -337,6 +354,7 @@ class Classifier:
         test_size : None, float
             | Proportion of data to be saved separately and held out for test set
             | (e.g. 0.2 if intending hold out 20%)
+            | If None, will inherit from split_sizes["test"] from Classifier
             | The training set will be further split to train / validation in self.validate
             | Note: only available for CellClassifiers
         attr_to_split : None, str
@@ -355,6 +373,9 @@ class Classifier:
             | P-value threshold to use for attribute balancing across splits
             | E.g. if set to 0.1, will accept trial if p >= 0.1 for all attributes in attr_to_balance
         """
+
+        if test_size is None:
+            test_size = self.oos_test_size
 
         # prepare data and labels for classification
         data = pu.load_and_filter(self.filter_data, self.nproc, input_data_file)
@@ -555,6 +576,7 @@ class Classifier:
         save_eval_output=True,
         predict_eval=True,
         predict_trainer=False,
+        n_hyperopt_trials=0,
     ):
         """
         (Cross-)validate cell state or gene classifier.
@@ -604,6 +626,9 @@ class Classifier:
         predict_trainer : bool
             | Whether or not to save eval predictions from trainer
             | Saves as a pickle file of trainer predictions
+        n_hyperopt_trials : int
+            | Number of trials to run for hyperparameter optimization
+            | If 0, will not optimize hyperparameters
         """
 
         if self.num_crossval_splits == 0:
@@ -700,14 +725,30 @@ class Classifier:
                     ]
                     eval_data = data.select(eval_indices)
                     train_data = data.select(train_indices)
-                trainer = self.train_classifier(
-                    model_directory,
-                    num_classes,
-                    train_data,
-                    eval_data,
-                    ksplit_output_dir,
-                    predict_trainer,
-                )
+                if n_hyperopt_trials == 0:
+                    trainer = self.train_classifier(
+                        model_directory,
+                        num_classes,
+                        train_data,
+                        eval_data,
+                        ksplit_output_dir,
+                        predict_trainer,
+                    )
+                else:
+                    trainer = self.hyperopt_classifier(
+                        model_directory,
+                        num_classes,
+                        train_data,
+                        eval_data,
+                        ksplit_output_dir,
+                        n_trials=n_hyperopt_trials,
+                    )
+                    if iteration_num == self.num_crossval_splits:
+                        return
+                    else:
+                        iteration_num = iteration_num + 1
+                        continue
+
                 result = self.evaluate_model(
                     trainer.model,
                     num_classes,
@@ -752,14 +793,29 @@ class Classifier:
                     self.nproc,
                 )
 
-                trainer = self.train_classifier(
-                    model_directory,
-                    num_classes,
-                    train_data,
-                    eval_data,
-                    ksplit_output_dir,
-                    predict_trainer,
-                )
+                if n_hyperopt_trials == 0:
+                    trainer = self.train_classifier(
+                        model_directory,
+                        num_classes,
+                        train_data,
+                        eval_data,
+                        ksplit_output_dir,
+                        predict_trainer,
+                    )
+                else:
+                    trainer = self.hyperopt_classifier(
+                        model_directory,
+                        num_classes,
+                        train_data,
+                        eval_data,
+                        ksplit_output_dir,
+                        n_trials=n_hyperopt_trials,
+                    )
+                    if iteration_num == self.num_crossval_splits:
+                        return
+                    else:
+                        iteration_num = iteration_num + 1
+                        continue
                 result = self.evaluate_model(
                     trainer.model,
                     num_classes,
@@ -809,6 +865,162 @@ class Classifier:
                 pickle.dump(all_metrics, f)
 
         return all_metrics
+
+    def hyperopt_classifier(
+        self,
+        model_directory,
+        num_classes,
+        train_data,
+        eval_data,
+        output_directory,
+        n_trials=100,
+    ):
+        """
+        Fine-tune model for cell state or gene classification.
+
+        **Parameters**
+
+        model_directory : Path
+            | Path to directory containing model
+        num_classes : int
+            | Number of classes for classifier
+        train_data : Dataset
+            | Loaded training .dataset input
+            | For cell classifier, labels in column "label".
+            | For gene classifier, labels in column "labels".
+        eval_data : None, Dataset
+            | (Optional) Loaded evaluation .dataset input
+            | For cell classifier, labels in column "label".
+            | For gene classifier, labels in column "labels".
+        output_directory : Path
+            | Path to directory where fine-tuned model will be saved
+        n_trials : int
+            | Number of trials to run for hyperparameter optimization
+        """
+
+        # initiate runtime environment for raytune
+        import ray
+        from ray import tune
+        from ray.tune.search.hyperopt import HyperOptSearch
+
+        ray.shutdown()  # engage new ray session
+        ray.init()
+
+        ##### Validate and prepare data #####
+        train_data, eval_data = cu.validate_and_clean_cols(
+            train_data, eval_data, self.classifier
+        )
+
+        if (self.no_eval is True) and (eval_data is not None):
+            logger.warning(
+                "no_eval set to True; hyperparameter optimization requires eval, proceeding with eval"
+            )
+
+        # ensure not overwriting previously saved model
+        saved_model_test = os.path.join(output_directory, "pytorch_model.bin")
+        if os.path.isfile(saved_model_test) is True:
+            logger.error("Model already saved to this designated output directory.")
+            raise
+        # make output directory
+        subprocess.call(f"mkdir {output_directory}", shell=True)
+
+        ##### Load model and training args #####
+        if self.classifier == "cell":
+            model_type = "CellClassifier"
+        elif self.classifier == "gene":
+            model_type = "GeneClassifier"
+
+        model = pu.load_model(model_type, num_classes, model_directory, "train")
+        def_training_args, def_freeze_layers = cu.get_default_train_args(
+            model, self.classifier, train_data, output_directory
+        )
+        del model
+
+        if self.training_args is not None:
+            def_training_args.update(self.training_args)
+        logging_steps = round(
+            len(train_data) / def_training_args["per_device_train_batch_size"] / 10
+        )
+        def_training_args["logging_steps"] = logging_steps
+        def_training_args["output_dir"] = output_directory
+        if eval_data is None:
+            def_training_args["evaluation_strategy"] = "no"
+            def_training_args["load_best_model_at_end"] = False
+        training_args_init = TrainingArguments(**def_training_args)
+
+        ##### Fine-tune the model #####
+        # define the data collator
+        if self.classifier == "cell":
+            data_collator = DataCollatorForCellClassification()
+        elif self.classifier == "gene":
+            data_collator = DataCollatorForGeneClassification()
+
+        # define function to initiate model
+        def model_init():
+            model = pu.load_model(model_type, num_classes, model_directory, "train")
+
+            if self.freeze_layers is not None:
+                def_freeze_layers = self.freeze_layers
+
+            if def_freeze_layers > 0:
+                modules_to_freeze = model.bert.encoder.layer[:def_freeze_layers]
+                for module in modules_to_freeze:
+                    for param in module.parameters():
+                        param.requires_grad = False
+
+            model = model.to("cuda:0")
+            return model
+
+        # create the trainer
+        trainer = Trainer(
+            model_init=model_init,
+            args=training_args_init,
+            data_collator=data_collator,
+            train_dataset=train_data,
+            eval_dataset=eval_data,
+            compute_metrics=cu.compute_metrics,
+        )
+
+        # specify raytune hyperparameter search space
+        if self.ray_config is None:
+            logger.warning(
+                "No ray_config provided. Proceeding with default, but ranges may need adjustment depending on model."
+            )
+            def_ray_config = {
+                "num_train_epochs": tune.choice([1]),
+                "learning_rate": tune.loguniform(1e-6, 1e-3),
+                "weight_decay": tune.uniform(0.0, 0.3),
+                "lr_scheduler_type": tune.choice(["linear", "cosine", "polynomial"]),
+                "warmup_steps": tune.uniform(100, 2000),
+                "seed": tune.uniform(0, 100),
+                "per_device_train_batch_size": tune.choice(
+                    [def_training_args["per_device_train_batch_size"]]
+                ),
+            }
+
+        hyperopt_search = HyperOptSearch(metric="eval_macro_f1", mode="max")
+
+        # optimize hyperparameters
+        trainer.hyperparameter_search(
+            direction="maximize",
+            backend="ray",
+            resources_per_trial={"cpu": int(self.nproc / self.ngpu), "gpu": 1},
+            hp_space=lambda _: def_ray_config
+            if self.ray_config is None
+            else self.ray_config,
+            search_alg=hyperopt_search,
+            n_trials=n_trials,  # number of trials
+            progress_reporter=tune.CLIReporter(
+                max_report_frequency=600,
+                sort_by_metric=True,
+                max_progress_rows=n_trials,
+                mode="max",
+                metric="eval_macro_f1",
+                metric_columns=["loss", "eval_loss", "eval_accuracy", "eval_macro_f1"],
+            ),
+        )
+
+        return trainer
 
     def train_classifier(
         self,

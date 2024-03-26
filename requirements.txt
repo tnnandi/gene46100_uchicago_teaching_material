@@ -1,5 +1,6 @@
 anndata>=0.9
 datasets>=2.12
+hyperopt>=0.2
 loompy>=3.0
 matplotlib>=3.7
 numpy>=1.23

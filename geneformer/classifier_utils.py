@@ -360,9 +360,23 @@ def get_num_classes(id_class_dict):
 def compute_metrics(pred):
     labels = pred.label_ids
     preds = pred.predictions.argmax(-1)
+
     # calculate accuracy and macro f1 using sklearn's function
-    acc = accuracy_score(labels, preds)
-    macro_f1 = f1_score(labels, preds, average="macro")
+    if len(labels.shape) == 1:
+        acc = accuracy_score(labels, preds)
+        macro_f1 = f1_score(labels, preds, average="macro")
+    else:
+        flat_labels = labels.flatten().tolist()
+        flat_preds = preds.flatten().tolist()
+        logit_label_paired = [
+            item for item in list(zip(flat_preds, flat_labels)) if item[1] != -100
+        ]
+        y_pred = [item[0] for item in logit_label_paired]
+        y_true = [item[1] for item in logit_label_paired]
+
+        acc = accuracy_score(y_true, y_pred)
+        macro_f1 = f1_score(y_true, y_pred, average="macro")
+
     return {"accuracy": acc, "macro_f1": macro_f1}
 
 
@@ -384,6 +398,11 @@ def get_default_train_args(model, classifier, data, output_dir):
             "learning_rate": 5e-5,
             "lr_scheduler_type": "linear",
             "warmup_steps": 500,
+            "per_device_train_batch_size": batch_size,
+            "per_device_eval_batch_size": batch_size,
+        }
+    else:
+        default_training_args = {
             "per_device_train_batch_size": batch_size,
             "per_device_eval_batch_size": batch_size,
         }
