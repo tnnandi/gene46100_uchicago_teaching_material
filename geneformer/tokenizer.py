@@ -55,7 +55,6 @@ logger = logging.getLogger(__name__)
 GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
 TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
 
-
 def rank_genes(gene_vector, gene_tokens):
     """
     Rank gene expression vector.
@@ -176,7 +175,7 @@ class TranscriptomeTokenizer:
         )
 
         output_path = (Path(output_directory) / output_prefix).with_suffix(".dataset")
-        tokenized_dataset.save_to_disk(output_path)
+        tokenized_dataset.save_to_disk(str(output_path))
 
     def tokenize_files(
         self, data_directory, file_format: Literal["loom", "h5ad"] = "loom"
