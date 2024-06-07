@@ -52,8 +52,8 @@ import loompy as lp  # noqa
 
 logger = logging.getLogger(__name__)
 
-GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
-TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
+from .perturber_utils import GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE
+
 
 def rank_genes(gene_vector, gene_tokens):
     """
