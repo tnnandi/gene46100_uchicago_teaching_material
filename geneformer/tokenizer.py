@@ -102,7 +102,7 @@ class TranscriptomeTokenizer:
         model_input_size : int = 2048
             | Max input size of model to truncate input to.
         special_token : bool = False
-            | Adds CLS token before and SEP token after rank value encoding.
+            | Adds CLS token before and EOS token after rank value encoding.
         gene_median_file : Path
             | Path to pickle file containing dictionary of non-zero median
             | gene expression values across Genecorpus-30M.
@@ -122,7 +122,7 @@ class TranscriptomeTokenizer:
         # input size for tokenization
         self.model_input_size = model_input_size
 
-        # add CLS and SEP tokens
+        # add CLS and EOS tokens
         self.special_token = special_token
 
         # load dictionary of gene normalization factors
@@ -377,14 +377,14 @@ class TranscriptomeTokenizer:
             if self.special_token:
                 example["input_ids"] = example["input_ids"][
                     0 : self.model_input_size - 2
-                ]  # truncate to leave space for CLS and SEP token
+                ]  # truncate to leave space for CLS and EOS token
                 example["input_ids"] = np.insert(
                     example["input_ids"], 0, self.gene_token_dict.get("<cls>")
                 )
                 example["input_ids"] = np.insert(
                     example["input_ids"],
                     len(example["input_ids"]),
-                    self.gene_token_dict.get("<sep>"),
+                    self.gene_token_dict.get("<eos>"),
                 )
             else:
                 # Truncate/Crop input_ids to input size
