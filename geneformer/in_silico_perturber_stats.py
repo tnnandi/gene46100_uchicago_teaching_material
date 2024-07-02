@@ -196,8 +196,23 @@ def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
     names = ["Cosine_shift", "Gene"]
     cos_sims_full_dfs = []
 
-    
-    gene_ids_df = cos_sims_df.loc[np.isin(cos_sims_df["Ensembl_ID"], genes_perturbed), :]
+    if isinstance(genes_perturbed,list):
+        if len(genes_perturbed)>1:
+            gene_ids_df = cos_sims_df.loc[np.isin([set(idx) for idx in cos_sims_df["Ensembl_ID"]], set(genes_perturbed)), :]
+        else:
+            gene_ids_df = cos_sims_df.loc[np.isin(cos_sims_df["Ensembl_ID"], genes_perturbed), :]
+    else:
+        logger.error(
+                        "aggregate_data is for perturbation of single gene or single group of genes. genes_to_perturb should be formatted as list."
+                    )
+        raise        
+
+    if gene_ids_df.empty:
+        logger.error(
+                        "genes_to_perturb not found in data."
+                    )
+        raise
+        
     tokens = gene_ids_df["Gene"]
     symbols = gene_ids_df["Gene_name"]
 
@@ -210,7 +225,6 @@ def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
         df["Cosine_shift"] = cos_shift_data
         df["Gene"] = symbol
         cos_sims_full_dfs.append(df)
-        
     
     return pd.concat(cos_sims_full_dfs)
 
