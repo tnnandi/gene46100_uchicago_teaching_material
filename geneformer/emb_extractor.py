@@ -78,7 +78,7 @@ def get_embs(
         gene_token_dict = {v:k for k,v in token_gene_dict.items()}
         cls_token_id = gene_token_dict["<cls>"]
         assert filtered_input_data["input_ids"][0][0] == cls_token_id, "First token is not <cls> token value"
-    else:
+    elif emb_mode == "cell":
         if cls_present:
             logger.warning("CLS token present in token dictionary, excluding from average.")    
         if eos_present:

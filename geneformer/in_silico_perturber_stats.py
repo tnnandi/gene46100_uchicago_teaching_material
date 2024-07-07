@@ -193,9 +193,8 @@ def get_impact_component(test_value, gaussian_mixture_model):
 
 # aggregate data for single perturbation in multiple cells
 def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
-    names = ["Cosine_shift", "Gene"]
+    names = ["Cosine_sim", "Gene"]
     cos_sims_full_dfs = []
-
     if isinstance(genes_perturbed,list):
         if len(genes_perturbed)>1:
             gene_ids_df = cos_sims_df.loc[np.isin([set(idx) for idx in cos_sims_df["Ensembl_ID"]], set(genes_perturbed)), :]
@@ -222,7 +221,7 @@ def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
             cos_shift_data += dict_i.get((token, "cell_emb"), [])
 
         df = pd.DataFrame(columns=names)
-        df["Cosine_shift"] = cos_shift_data
+        df["Cosine_sim"] = cos_shift_data
         df["Gene"] = symbol
         cos_sims_full_dfs.append(df)
     
@@ -232,6 +231,8 @@ def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
 def find(variable, x):
     try:
         if x in variable:  # Test if variable is iterable and contains x
+            return True
+        elif x == variable:
             return True
     except (ValueError, TypeError):
         return x == variable  # Test if variable is x if non-iterable
@@ -273,15 +274,15 @@ def isp_aggregate_gene_shifts(
     cos_sims_full_df["Affected_Ensembl_ID"] = [
         gene_token_id_dict.get(token, np.nan) for token in cos_sims_full_df["Affected"]
     ]
-    cos_sims_full_df["Cosine_shift_mean"] = [v[0] for k, v in cos_data_mean.items()]
-    cos_sims_full_df["Cosine_shift_stdev"] = [v[1] for k, v in cos_data_mean.items()]
+    cos_sims_full_df["Cosine_sim_mean"] = [v[0] for k, v in cos_data_mean.items()]
+    cos_sims_full_df["Cosine_sim_stdev"] = [v[1] for k, v in cos_data_mean.items()]
     cos_sims_full_df["N_Detections"] = [v[2] for k, v in cos_data_mean.items()]
 
     specific_val = "cell_emb"
     cos_sims_full_df["temp"] = list(cos_sims_full_df["Affected"] == specific_val)
-    # reorder so cell embs are at the top and all are subordered by magnitude of cosine shift
+    # reorder so cell embs are at the top and all are subordered by magnitude of cosine sim
     cos_sims_full_df = cos_sims_full_df.sort_values(
-        by=(["temp", "Cosine_shift_mean"]), ascending=[False, False]
+        by=(["temp", "Cosine_sim_mean"]), ascending=[False, True]
     ).drop("temp", axis=1)
 
     return cos_sims_full_df
@@ -939,11 +940,11 @@ class InSilicoPerturberStats:
         |     1: within impact component; 0: not within impact component
         | "Impact_component_percent": percent of cells in which given perturbation was modeled to be within impact component
 
-        | In case of aggregating gene shifts:
+        | In case of aggregating data / gene shifts:
         | "Perturbed": ID(s) of gene(s) being perturbed
         | "Affected": ID of affected gene or "cell_emb" indicating the impact on the cell embedding as a whole
-        | "Cosine_shift_mean": mean of cosine shift of modeled perturbation on affected gene or cell
-        | "Cosine_shift_stdev": standard deviation of cosine shift of modeled perturbation on affected gene or cell
+        | "Cosine_sim_mean": mean of cosine similarity of cell or affected gene in original vs. perturbed
+        | "Cosine_sim_stdev": standard deviation of cosine similarity of cell or affected gene in original vs. perturbed
         """
 
         if self.mode not in [
