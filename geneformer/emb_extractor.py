@@ -148,7 +148,7 @@ def get_embs(
                     del embs_h
                     del dict_h
         elif emb_mode == "cls":
-            cls_embs = embs_i[:,0,:] # CLS token layer
+            cls_embs = embs_i[:,0,:].clone().detach() # CLS token layer
             embs_list.append(cls_embs)
             del cls_embs
             
