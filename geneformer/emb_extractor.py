@@ -622,13 +622,13 @@ class EmbExtractor:
 
         if self.exact_summary_stat == "exact_mean":
             embs = embs.mean(dim=0)
-            emb_dims = pu.get_model_embedding_dimensions(model)
+            emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
                 embs_df[0:emb_dims-1].mean(axis="rows"), columns=[self.exact_summary_stat]
             ).T
         elif self.exact_summary_stat == "exact_median":
             embs = torch.median(embs, dim=0)[0]
-            emb_dims = pu.get_model_embedding_dimensions(model)
+            emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
                 embs_df[0:emb_dims-1].median(axis="rows"), columns=[self.exact_summary_stat]
             ).T
