@@ -228,6 +228,7 @@ class InSilicoPerturber:
         # load token dictionary (Ensembl IDs:token)
         with open(token_dictionary_file, "rb") as f:
             self.gene_token_dict = pickle.load(f)
+        self.token_gene_dict = {v: k for k, v in self.gene_token_dict.items()}
 
         self.pad_token_id = self.gene_token_dict.get("<pad>")
 
@@ -560,6 +561,7 @@ class InSilicoPerturber:
                     layer_to_quant,
                     self.pad_token_id,
                     self.forward_batch_size,
+                    token_gene_dict=self.token_gene_dict,
                     summary_stat=None,
                     silent=True,
                 )
@@ -579,6 +581,7 @@ class InSilicoPerturber:
                     layer_to_quant,
                     self.pad_token_id,
                     self.forward_batch_size,
+                    token_gene_dict=self.token_gene_dict,
                     summary_stat=None,
                     silent=True,
                 )
@@ -738,6 +741,7 @@ class InSilicoPerturber:
                 layer_to_quant,
                 self.pad_token_id,
                 self.forward_batch_size,
+                token_gene_dict=self.token_gene_dict,
                 summary_stat=None,
                 silent=True,
             )
@@ -765,6 +769,7 @@ class InSilicoPerturber:
                 layer_to_quant,
                 self.pad_token_id,
                 self.forward_batch_size,
+                token_gene_dict=self.token_gene_dict,
                 summary_stat=None,
                 silent=True,
             )
