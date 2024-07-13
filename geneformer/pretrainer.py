@@ -32,7 +32,7 @@ from transformers.training_args import ParallelMode
 from transformers.utils import is_tf_available, is_torch_available, logging, to_py_obj
 from transformers.utils.generic import _is_tensorflow, _is_torch
 
-from .tokenizer import TOKEN_DICTIONARY_FILE
+from . import TOKEN_DICTIONARY_FILE
 
 logger = logging.get_logger(__name__)
 EncodedInput = List[int]

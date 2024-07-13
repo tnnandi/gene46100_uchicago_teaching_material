@@ -38,9 +38,7 @@ from sklearn.mixture import GaussianMixture
 from tqdm.auto import tqdm, trange
 
 from .perturber_utils import flatten_list, validate_cell_states_to_model
-from .tokenizer import TOKEN_DICTIONARY_FILE
-
-GENE_NAME_ID_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
+from . import TOKEN_DICTIONARY_FILE, ENSEMBL_DICTIONARY_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -673,7 +671,7 @@ class InSilicoPerturberStats:
         cell_states_to_model=None,
         pickle_suffix="_raw.pickle",
         token_dictionary_file=TOKEN_DICTIONARY_FILE,
-        gene_name_id_dictionary_file=GENE_NAME_ID_DICTIONARY_FILE,
+        gene_name_id_dictionary_file=ENSEMBL_DICTIONARY_FILE,
     ):
         """
         Initialize in silico perturber stats generator.

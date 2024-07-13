@@ -4,6 +4,7 @@ Geneformer collator for gene and cell classification.
 Huggingface data collator modified to accommodate single-cell transcriptomics data for gene and cell classification.
 """
 import numpy as np
+import pickle
 import torch
 import warnings
 from enum import Enum
@@ -17,7 +18,11 @@ from transformers import (
 from transformers.utils import is_tf_available, is_torch_available, logging, to_py_obj
 from transformers.utils.generic import _is_tensorflow, _is_torch
 
-from .pretrainer import token_dictionary
+from . import TOKEN_DICTIONARY_FILE
+
+# load token dictionary (Ensembl IDs:token)
+with open(TOKEN_DICTIONARY_FILE, "rb") as f:
+    token_dictionary = pickle.load(f)
 
 EncodedInput = List[int]
 logger = logging.get_logger(__name__)

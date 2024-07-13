@@ -1,4 +1,10 @@
 # ruff: noqa: F401
+from pathlib import Path
+
+GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
+TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
+ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
+
 from . import (
     collator_for_classification,
     emb_extractor,

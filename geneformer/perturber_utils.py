@@ -18,12 +18,8 @@ from transformers import (
     BertForTokenClassification,
 )
 
-GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
-TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
-ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
+from . import GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE, ENSEMBL_DICTIONARY_FILE
 
-
-sns.set()
 
 logger = logging.getLogger(__name__)
 

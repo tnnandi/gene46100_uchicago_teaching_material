@@ -61,7 +61,7 @@ from . import DataCollatorForCellClassification, DataCollatorForGeneClassificati
 from . import classifier_utils as cu
 from . import evaluation_utils as eu
 from . import perturber_utils as pu
-from .tokenizer import TOKEN_DICTIONARY_FILE
+from . import TOKEN_DICTIONARY_FILE
 
 sns.set()
 

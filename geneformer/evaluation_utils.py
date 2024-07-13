@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from tqdm.auto import trange
 
 from .emb_extractor import make_colorbar
-from .tokenizer import TOKEN_DICTIONARY_FILE
+from . import TOKEN_DICTIONARY_FILE
 
 logger = logging.getLogger(__name__)
 

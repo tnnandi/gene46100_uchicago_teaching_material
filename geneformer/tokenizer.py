@@ -52,7 +52,7 @@ import loompy as lp  # noqa
 
 logger = logging.getLogger(__name__)
 
-from .perturber_utils import GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE
+from . import GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE
 
 
 def rank_genes(gene_vector, gene_tokens):

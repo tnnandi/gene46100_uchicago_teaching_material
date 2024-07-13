@@ -38,21 +38,17 @@ import logging
 import os
 import pickle
 from collections import defaultdict
-from typing import List
 from multiprocess import set_start_method
 
-import seaborn as sns
 import torch
-from datasets import Dataset
+from datasets import Dataset, disable_progress_bars
 from tqdm.auto import trange
 
 from . import perturber_utils as pu
 from .emb_extractor import get_embs
-from .perturber_utils import TOKEN_DICTIONARY_FILE
+from . import TOKEN_DICTIONARY_FILE
 
-
-sns.set()
-
+disable_progress_bars()
 
 logger = logging.getLogger(__name__)
 
