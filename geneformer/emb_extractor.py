@@ -272,7 +272,7 @@ def label_gene_embs(embs, downsampled_data, token_gene_dict):
     return embs_df
 
 
-def plot_umap(embs_df, emb_dims, label, output_file, kwargs_dict):
+def plot_umap(embs_df, emb_dims, label, output_file, kwargs_dict, seed=0):
     only_embs_df = embs_df.iloc[:, :emb_dims]
     only_embs_df.index = pd.RangeIndex(0, only_embs_df.shape[0], name=None).astype(str)
     only_embs_df.columns = pd.RangeIndex(0, only_embs_df.shape[1], name=None).astype(
@@ -282,8 +282,8 @@ def plot_umap(embs_df, emb_dims, label, output_file, kwargs_dict):
     obs_dict = {"cell_id": list(only_embs_df.index), f"{label}": list(embs_df[label])}
     adata = anndata.AnnData(X=only_embs_df, obs=obs_dict, var=vars_dict)
     sc.tl.pca(adata, svd_solver="arpack")
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata)
+    sc.pp.neighbors(adata, random_state=seed)
+    sc.tl.umap(adata, random_state=seed)
     sns.set(rc={"figure.figsize": (10, 10)}, font_scale=2.3)
     sns.set_style("white")
     default_kwargs_dict = {"palette": "Set2", "size": 200}
