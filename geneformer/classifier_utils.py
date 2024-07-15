@@ -306,7 +306,7 @@ def balance_attr_splits(
                     exp_counts[cat] * sum(obs) / sum(exp_counts.values())
                     for cat in all_categ
                 ]
-                chisquare(f_obs=obs, f_exp=exp).pvalue
+                pval = chisquare(f_obs=obs, f_exp=exp).pvalue
                 train_attr_counts = str(obs_counts).strip("Counter(").strip(")")
                 eval_attr_counts = str(exp_counts).strip("Counter(").strip(")")
                 df_vals += [train_attr_counts, eval_attr_counts, pval]
