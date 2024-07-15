@@ -39,6 +39,7 @@ import os
 import pickle
 from collections import defaultdict
 from multiprocess import set_start_method
+from typing import List
 
 import torch
 from datasets import Dataset, disable_progress_bars
