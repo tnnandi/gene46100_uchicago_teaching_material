@@ -1,10 +1,12 @@
 # ruff: noqa: F401
 from pathlib import Path
+import warnings
+warnings.filterwarnings("ignore", message=".*The 'nopython' keyword.*")  # noqa # isort:skip
 
-GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
-TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
-ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
-ENSEMBL_MAPPING_FILE = Path(__file__).parent / "ensembl_mapping_dict.pkl"
+GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary_gc95M.pkl"
+TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary_gc95M.pkl"
+ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict_gc95M.pkl"
+ENSEMBL_MAPPING_FILE = Path(__file__).parent / "ensembl_mapping_dict_gc95M.pkl"
 
 from . import (
     collator_for_classification,
@@ -26,3 +28,6 @@ from .tokenizer import TranscriptomeTokenizer
 
 from . import classifier  # noqa # isort:skip
 from .classifier import Classifier  # noqa # isort:skip
+
+from . import mtl_classifier  # noqa # isort:skip
+from .mtl_classifier import MTLClassifier  # noqa # isort:skip

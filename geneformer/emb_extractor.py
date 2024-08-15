@@ -286,12 +286,20 @@ def plot_umap(embs_df, emb_dims, label, output_file, kwargs_dict, seed=0):
     sc.tl.umap(adata, random_state=seed)
     sns.set(rc={"figure.figsize": (10, 10)}, font_scale=2.3)
     sns.set_style("white")
-    default_kwargs_dict = {"palette": "Set2", "size": 200}
+    default_kwargs_dict = {"size": 200}
     if kwargs_dict is not None:
         default_kwargs_dict.update(kwargs_dict)
 
-    with plt.rc_context(): 
-        sc.pl.umap(adata, color=label, **default_kwargs_dict)
+    cats = set(embs_df[label])
+
+    with plt.rc_context():
+        ax = sc.pl.umap(adata, color=label, show=False, **default_kwargs_dict)
+        ax.legend(markerscale=2,
+                  frameon=False,
+                  loc="center left",
+                  bbox_to_anchor=(1, 0.5),
+                  ncol=(1 if len(cats) <= 14 else 2 if len(cats) <= 30 else 3))
+        plt.show()
         plt.savefig(output_file, bbox_inches="tight")
 
 
@@ -470,7 +478,6 @@ class EmbExtractor:
             ...         emb_mode="cell",
             ...         filter_data={"cell_type":["cardiomyocyte"]},
             ...         max_ncells=1000,
-            ...         max_ncells_to_plot=1000,
             ...         emb_layer=-1,
             ...         emb_label=["disease", "cell_type"],
             ...         labels_to_plot=["disease", "cell_type"])
@@ -783,15 +790,15 @@ class EmbExtractor:
             logger.error("Plotting UMAP requires 'labels_to_plot'. ")
             raise
 
-        if max_ncells_to_plot > self.max_ncells:
-            max_ncells_to_plot = self.max_ncells
-            logger.warning(
-                "max_ncells_to_plot must be <= max_ncells. "
-                f"Changing max_ncells_to_plot to {self.max_ncells}."
-            )
-
-        if (max_ncells_to_plot is not None) and (max_ncells_to_plot < self.max_ncells):
-            embs = embs.sample(max_ncells_to_plot, axis=0)
+        if max_ncells_to_plot is not None:
+            if max_ncells_to_plot > self.max_ncells:
+                max_ncells_to_plot = self.max_ncells
+                logger.warning(
+                    "max_ncells_to_plot must be <= max_ncells. "
+                    f"Changing max_ncells_to_plot to {self.max_ncells}."
+                )
+            elif max_ncells_to_plot < self.max_ncells:
+                embs = embs.sample(max_ncells_to_plot, axis=0)
 
         if self.emb_label is None:
             label_len = 0

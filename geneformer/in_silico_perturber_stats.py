@@ -114,6 +114,7 @@ def read_dictionaries(
                             state_dict[state_value][key] += new_dict[key]
                         except KeyError:
                             state_dict[state_value][key] = new_dict[key]
+
     if not file_found:
         logger.error(
             "No raw data for processing found within provided directory. "
@@ -237,13 +238,16 @@ def find(variable, x):
 
 
 def isp_aggregate_gene_shifts(
-    cos_sims_df, dict_list, gene_token_id_dict, gene_id_name_dict
+    cos_sims_df, dict_list, gene_token_id_dict, gene_id_name_dict, token_dtype
 ):
     cos_shift_data = dict()
     for i in trange(cos_sims_df.shape[0]):
         token = cos_sims_df["Gene"][i]
         for dict_i in dict_list:
-            affected_pairs = [k for k, v in dict_i.items() if find(k[0], token)]
+            if token_dtype == "nontuple":
+                affected_pairs = [k for k, v in dict_i.items() if k[0] == token]
+            else:
+                affected_pairs = [k for k, v in dict_i.items() if find(k[0], token)]
             for key in affected_pairs:
                 if key in cos_shift_data.keys():
                     cos_shift_data[key] += dict_i.get(key, [])
@@ -256,11 +260,11 @@ def isp_aggregate_gene_shifts(
     cos_sims_full_df = pd.DataFrame()
     cos_sims_full_df["Perturbed"] = [k[0] for k, v in cos_data_mean.items()]
     cos_sims_full_df["Gene_name"] = [
-        cos_sims_df[cos_sims_df["Gene"] == k[0]]["Gene_name"][0]
+        cos_sims_df[cos_sims_df["Gene"] == k[0]]["Gene_name"].item()
         for k, v in cos_data_mean.items()
     ]
     cos_sims_full_df["Ensembl_ID"] = [
-        cos_sims_df[cos_sims_df["Gene"] == k[0]]["Ensembl_ID"][0]
+        cos_sims_df[cos_sims_df["Gene"] == k[0]]["Ensembl_ID"].item()
         for k, v in cos_data_mean.items()
     ]
 
@@ -690,7 +694,7 @@ class InSilicoPerturberStats:
             | Default is assuming genes_to_perturb in isp experiment was "all" (each gene in each cell).
             | Otherwise, may provide a list of ENSEMBL IDs of genes perturbed as a group all together.
         combos : {0,1,2}
-            | Whether to perturb genes individually (0), in pairs (1), or in triplets (2).
+            | Whether genex perturbed in isp experiment were perturbed individually (0), in pairs (1), or in triplets (2).
         anchor_gene : None, str
             | ENSEMBL ID of gene to use as anchor in combination perturbations or in testing effect on downstream genes.
             | For example, if combos=1 and anchor_gene="ENSG00000136574":
@@ -1014,7 +1018,7 @@ class InSilicoPerturberStats:
             },
             index=[i for i in range(len(gene_list))],
         )
-
+        
         if self.mode == "goal_state_shift":
             cos_sims_df = isp_stats_to_goal_state(
                 cos_sims_df_initial,
@@ -1045,11 +1049,23 @@ class InSilicoPerturberStats:
             cos_sims_df = isp_aggregate_grouped_perturb(cos_sims_df_initial, dict_list, self.genes_perturbed)
 
         elif self.mode == "aggregate_gene_shifts":
+            if (self.genes_perturbed == "all") and (self.combos == 0):
+                tuple_types = [True if isinstance(genes, tuple) else False for genes in gene_list]
+                if all(tuple_types):
+                    token_dtype = "tuple"
+                elif not any(tuple_types):
+                    token_dtype = "nontuple"
+                else:
+                    token_dtype = "mix"
+            else:
+                token_dtype = "mix"
+            
             cos_sims_df = isp_aggregate_gene_shifts(
                 cos_sims_df_initial,
                 dict_list,
                 self.gene_token_id_dict,
                 self.gene_id_name_dict,
+                token_dtype
             )
 
         # save perturbation stats to output_path

@@ -12,13 +12,17 @@ import pandas as pd
 import seaborn as sns
 import torch
 from datasets import Dataset, load_from_disk
+from peft import LoraConfig, get_peft_model 
 from transformers import (
     BertForMaskedLM,
     BertForSequenceClassification,
     BertForTokenClassification,
+    BitsAndBytesConfig,
 )
 
-from . import GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE, ENSEMBL_DICTIONARY_FILE
+GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
+TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
+ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
 
 
 logger = logging.getLogger(__name__)
@@ -111,17 +115,49 @@ def slice_by_inds_to_perturb(filtered_input_data, cell_inds_to_perturb):
 
 
 # load model to GPU
-def load_model(model_type, num_classes, model_directory, mode):
+def load_model(model_type, num_classes, model_directory, mode, quantize=False):
+    if model_type == "MTLCellClassifier-Quantized":
+        model_type = "MTLCellClassifier"
+        quantize = True
+    
     if mode == "eval":
         output_hidden_states = True
     elif mode == "train":
         output_hidden_states = False
+
+    if quantize is True:
+        if model_type == "MTLCellClassifier":
+            quantize = {
+                "peft_config": None,
+                "bnb_config": BitsAndBytesConfig(
+                    load_in_8bit=True,
+                )
+            }
+        else:
+            quantize = {
+                "peft_config": LoraConfig(
+                    lora_alpha=128,
+                    lora_dropout=0.1,
+                    r=64,
+                    bias="none",
+                    task_type="TokenClassification",
+                  ),
+                "bnb_config": BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16
+                  )
+            }
+    elif quantize is False:
+        quantize = {"bnb_config": None}
 
     if model_type == "Pretrained":
         model = BertForMaskedLM.from_pretrained(
             model_directory,
             output_hidden_states=output_hidden_states,
             output_attentions=False,
+            quantization_config=quantize["bnb_config"],
         )
     elif model_type == "GeneClassifier":
         model = BertForTokenClassification.from_pretrained(
@@ -129,6 +165,7 @@ def load_model(model_type, num_classes, model_directory, mode):
             num_labels=num_classes,
             output_hidden_states=output_hidden_states,
             output_attentions=False,
+            quantization_config=quantize["bnb_config"],
         )
     elif model_type == "CellClassifier":
         model = BertForSequenceClassification.from_pretrained(
@@ -136,11 +173,24 @@ def load_model(model_type, num_classes, model_directory, mode):
             num_labels=num_classes,
             output_hidden_states=output_hidden_states,
             output_attentions=False,
+            quantization_config=quantize["bnb_config"],
+        )
+    elif model_type == "MTLCellClassifier":
+        model = BertForMaskedLM.from_pretrained(
+            model_directory,
+            num_labels=num_classes,
+            output_hidden_states=output_hidden_states,
+            output_attentions=False,
+            quantization_config=quantize["bnb_config"],
         )
     # if eval mode, put the model in eval mode for fwd pass
     if mode == "eval":
         model.eval()
-    model = model.to("cuda")
+    if (quantize is False) or (quantize == {'bnb_config': None}) or (model_type == "MTLCellClassifier"):
+        model = model.to("cuda")
+    else:
+        model.enable_input_require_grads()
+        model = get_peft_model(model, quantize["peft_config"])
     return model
 
 
@@ -222,27 +272,47 @@ def overexpress_indices(example):
     indices = example["perturb_index"]
     if any(isinstance(el, list) for el in indices):
         indices = flatten_list(indices)
-    for index in sorted(indices, reverse=True):
-        example["input_ids"].insert(0, example["input_ids"].pop(index))
-
+    insert_pos = 0
+    for index in sorted(indices, reverse=False):
+        example["input_ids"].insert(insert_pos, example["input_ids"].pop(index))
+        insert_pos += 1
     example["length"] = len(example["input_ids"])
     return example
 
+# if CLS token present, move to 1st rather than 0th position
+def overexpress_indices_special(example):
+    indices = example["perturb_index"]
+    if any(isinstance(el, list) for el in indices):
+        indices = flatten_list(indices)
+    insert_pos = 1 # Insert starting after CLS token
+    for index in sorted(indices, reverse=False):
+        example["input_ids"].insert(insert_pos, example["input_ids"].pop(index))
+        insert_pos += 1
+    example["length"] = len(example["input_ids"])
+    return example
 
 # for genes_to_perturb = list of genes to overexpress that are not necessarily expressed in cell
-def overexpress_tokens(example, max_len):
+def overexpress_tokens(example, max_len, special_token):
     # -100 indicates tokens to overexpress are not present in rank value encoding
     if example["perturb_index"] != [-100]:
         example = delete_indices(example)
-    [
-        example["input_ids"].insert(0, token)
-        for token in example["tokens_to_perturb"][::-1]
-    ]
+    if special_token:
+        [
+            example["input_ids"].insert(1, token)
+            for token in example["tokens_to_perturb"][::-1]
+        ]
+    else:
+        [
+            example["input_ids"].insert(0, token)
+            for token in example["tokens_to_perturb"][::-1]
+        ]
 
     # truncate to max input size, must also truncate original emb to be comparable
     if len(example["input_ids"]) > max_len:
-        example["input_ids"] = example["input_ids"][0:max_len]
-
+        if special_token:
+            example["input_ids"] = example["input_ids"][0:max_len-1]+[example["input_ids"][-1]]
+        else:
+            example["input_ids"] = example["input_ids"][0:max_len]
     example["length"] = len(example["input_ids"])
     return example
 
@@ -257,6 +327,13 @@ def truncate_by_n_overflow(example):
     new_max_len = example["length"] - example["n_overflow"]
     example["input_ids"] = example["input_ids"][0:new_max_len]
     example["length"] = len(example["input_ids"])
+    return example
+
+def truncate_by_n_overflow_special(example):
+    if example["n_overflow"] > 0:
+        new_max_len = example["length"] - example["n_overflow"]
+        example["input_ids"] = example["input_ids"][0:new_max_len-1]+[example["input_ids"][-1]]
+        example["length"] = len(example["input_ids"])
     return example
 
 
@@ -392,7 +469,81 @@ def make_perturbation_batch(
     return perturbation_dataset, indices_to_perturb
 
 
-# perturbed cell emb removing the activated/overexpressed/inhibited gene emb
+def make_perturbation_batch_special(
+    example_cell, perturb_type, tokens_to_perturb, anchor_token, combo_lvl, num_proc
+) -> tuple[Dataset, List[int]]:
+    if combo_lvl == 0 and tokens_to_perturb == "all":
+        if perturb_type in ["overexpress", "activate"]:
+            range_start = 1
+        elif perturb_type in ["delete", "inhibit"]:
+            range_start = 0
+        range_start += 1 # Starting after the CLS token
+        indices_to_perturb = [
+            [i] for i in range(range_start, example_cell["length"][0]-1) # And excluding the EOS token
+        ]
+
+    # elif combo_lvl > 0 and anchor_token is None:
+    ## to implement
+    elif combo_lvl > 0 and (anchor_token is not None): 
+        example_input_ids = example_cell["input_ids"][0]
+        anchor_index = example_input_ids.index(anchor_token[0])
+        indices_to_perturb = [
+            sorted([anchor_index, i]) if i != anchor_index else None
+            for i in range(1, example_cell["length"][0]-1) # Exclude CLS and EOS tokens
+        ]
+        indices_to_perturb = [item for item in indices_to_perturb if item is not None]
+    else:
+        example_input_ids = example_cell["input_ids"][0]
+        indices_to_perturb = [
+            [example_input_ids.index(token)] if token in example_input_ids else None
+            for token in tokens_to_perturb
+        ]
+        indices_to_perturb = [item for item in indices_to_perturb if item is not None]
+
+    # create all permutations of combo_lvl of modifiers from tokens_to_perturb
+    if combo_lvl > 0 and (anchor_token is None):
+        if tokens_to_perturb != "all":
+            if len(tokens_to_perturb) == combo_lvl + 1:
+                indices_to_perturb = [
+                    list(x) for x in it.combinations(indices_to_perturb, combo_lvl + 1)
+                ]
+        else:
+            all_indices = [[i] for i in range(1, example_cell["length"][0]-1)] # Exclude CLS and EOS tokens
+            all_indices = [
+                index for index in all_indices if index not in indices_to_perturb
+            ]
+            indices_to_perturb = [
+                [[j for i in indices_to_perturb for j in i], x] for x in all_indices
+            ]
+
+    length = len(indices_to_perturb)
+    perturbation_dataset = Dataset.from_dict(
+        {
+            "input_ids": example_cell["input_ids"] * length,
+            "perturb_index": indices_to_perturb,
+        }
+    )
+
+    if length < 400:
+        num_proc_i = 1
+    else:
+        num_proc_i = num_proc
+
+    if perturb_type == "delete":
+        perturbation_dataset = perturbation_dataset.map(
+            delete_indices, num_proc=num_proc_i
+        )
+    elif perturb_type == "overexpress":
+        perturbation_dataset = perturbation_dataset.map(
+                overexpress_indices_special, num_proc=num_proc_i
+        )
+
+    perturbation_dataset = perturbation_dataset.map(measure_length, num_proc=num_proc_i)
+
+    return perturbation_dataset, indices_to_perturb
+
+
+# original cell emb removing the activated/overexpressed/inhibited gene emb
 # so that only non-perturbed gene embeddings are compared to each other
 # in original or perturbed context
 def make_comparison_batch(original_emb_batch, indices_to_perturb, perturb_group):
@@ -589,9 +740,10 @@ def quant_cos_sims(
         cos = torch.nn.CosineSimilarity(dim=1)
 
     # if emb_mode == "gene", can only calculate gene cos sims
-    # against original cell anyways
+    # against original cell
     if cell_states_to_model is None or emb_mode == "gene":
         cos_sims = cos(perturbation_emb, original_emb).to("cuda")
+        
     elif cell_states_to_model is not None and emb_mode == "cell":
         possible_states = get_possible_states(cell_states_to_model)
         cos_sims = dict(zip(possible_states, [[] for _ in range(len(possible_states))]))

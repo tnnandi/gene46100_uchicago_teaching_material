@@ -32,8 +32,6 @@ from transformers.training_args import ParallelMode
 from transformers.utils import is_tf_available, is_torch_available, logging, to_py_obj
 from transformers.utils.generic import _is_tensorflow, _is_torch
 
-from . import TOKEN_DICTIONARY_FILE
-
 logger = logging.get_logger(__name__)
 EncodedInput = List[int]
 VERY_LARGE_INTEGER = int(
@@ -51,9 +49,6 @@ else:
 _is_torch_generator_available = False
 if version.parse(torch.__version__) >= version.parse("1.6"):
     _is_torch_generator_available = True
-
-with open(TOKEN_DICTIONARY_FILE, "rb") as f:
-    token_dictionary = pickle.load(f)
 
 
 class ExplicitEnum(Enum):
@@ -109,15 +104,7 @@ class GeneformerPreCollator(SpecialTokensMixin):
         super().__init__(mask_token="<mask>", pad_token="<pad>")
 
         self.token_dictionary = kwargs.get("token_dictionary")
-        # self.mask_token = "<mask>"
-        # self.mask_token_id = self.token_dictionary.get("<mask>")
-        # self.pad_token = "<pad>"
-        # self.pad_token_id = self.token_dictionary.get("<pad>")
         self.padding_side = "right"
-        # self.all_special_ids = [
-        #     self.token_dictionary.get("<mask>"),
-        #     self.token_dictionary.get("<pad>"),
-        # ]
         self.model_input_names = ["input_ids"]
 
     def convert_ids_to_tokens(self, value):

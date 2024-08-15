@@ -18,12 +18,6 @@ from transformers import (
 from transformers.utils import is_tf_available, is_torch_available, logging, to_py_obj
 from transformers.utils.generic import _is_tensorflow, _is_torch
 
-from . import TOKEN_DICTIONARY_FILE
-
-# load token dictionary (Ensembl IDs:token)
-with open(TOKEN_DICTIONARY_FILE, "rb") as f:
-    token_dictionary = pickle.load(f)
-
 EncodedInput = List[int]
 logger = logging.get_logger(__name__)
 VERY_LARGE_INTEGER = int(
@@ -85,16 +79,18 @@ class TensorType(ExplicitEnum):
 
     
 class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
-    mask_token = "<mask>"
-    mask_token_id = token_dictionary.get("<mask>")
-    pad_token = "<pad>"
-    pad_token_id = token_dictionary.get("<pad>")
-    padding_side = "right"
-    all_special_ids = [
-        token_dictionary.get("<mask>"),
-        token_dictionary.get("<pad>")
-    ]
-    model_input_names = ["input_ids"]
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(mask_token="<mask>", pad_token="<pad>")
+
+        self.token_dictionary = kwargs.get("token_dictionary")
+        self.padding_side = "right"
+        self.model_input_names = ["input_ids"]
+        self.mask_token_id = self.token_dictionary.get("<mask>")
+        self.pad_token_id = self.token_dictionary.get("<pad>")
+        self.all_special_ids = [
+            self.token_dictionary.get("<mask>"),
+            self.token_dictionary.get("<pad>")
+        ]
 
     def _get_padding_truncation_strategies(
         self, padding=True, truncation=False, max_length=None, pad_to_multiple_of=None, verbose=True, **kwargs
@@ -550,8 +546,7 @@ class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
         label_pad_token_id (:obj:`int`, `optional`, defaults to -100):
             The id to use when padding the labels (-100 will be automatically ignore by PyTorch loss functions).
     """
-
-    tokenizer = PrecollatorForGeneAndCellClassification()
+   
     class_type = "gene"
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
@@ -559,8 +554,9 @@ class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
     label_pad_token_id: int = -100
     
     def __init__(self, *args, **kwargs) -> None:
+        self.token_dictionary = kwargs.pop("token_dictionary")
         super().__init__(
-            tokenizer=self.tokenizer,
+            tokenizer=PrecollatorForGeneAndCellClassification(token_dictionary=self.token_dictionary),
             padding=self.padding,
             max_length=self.max_length,
             pad_to_multiple_of=self.pad_to_multiple_of,

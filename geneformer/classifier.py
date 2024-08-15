@@ -72,6 +72,7 @@ logger = logging.getLogger(__name__)
 class Classifier:
     valid_option_dict = {
         "classifier": {"cell", "gene"},
+        "quantize": {bool, dict},
         "cell_state_dict": {None, dict},
         "gene_class_dict": {None, dict},
         "filter_data": {None, dict},
@@ -93,6 +94,7 @@ class Classifier:
     def __init__(
         self,
         classifier=None,
+        quantize=False,
         cell_state_dict=None,
         gene_class_dict=None,
         filter_data=None,
@@ -118,6 +120,13 @@ class Classifier:
 
         classifier : {"cell", "gene"}
             | Whether to fine-tune a cell state or gene classifier.
+        quantize : bool, dict
+            | Whether to fine-tune a quantized model.
+            | If True and no config provided, will use default.
+            | Will use custom config if provided.
+            | Configs should be provided as dictionary of BitsAndBytesConfig (transformers) and LoraConfig (peft).
+            | For example: {"bnb_config": BitsAndBytesConfig(...),
+            |               "peft_config": LoraConfig(...)}
         cell_state_dict : None, dict
             | Cell states to fine-tune model to distinguish.
             | Two-item dictionary with keys: state_key and states
@@ -191,6 +200,7 @@ class Classifier:
             self.model_type = "CellClassifier"
         elif self.classifier == "gene":
             self.model_type = "GeneClassifier"
+        self.quantize = quantize
         self.cell_state_dict = cell_state_dict
         self.gene_class_dict = gene_class_dict
         self.filter_data = filter_data
@@ -256,7 +266,7 @@ class Classifier:
                     f"Genes to classify {missing_genes} are not in token dictionary."
                 )
             self.gene_class_dict = {
-                k: set([self.gene_token_dict.get(gene) for gene in v])
+                k: list(set([self.gene_token_dict.get(gene) for gene in v]))
                 for k, v in self.gene_class_dict.items()
             }
             empty_classes = []
@@ -403,6 +413,15 @@ class Classifier:
                     "Column name 'labels' must be reserved for class IDs. Please rename column."
                 )
                 raise
+                
+        if (attr_to_split is not None) and (attr_to_balance is None):
+            logger.error(
+                "Splitting by attribute while balancing confounders requires both attr_to_split and attr_to_balance to be defined."
+            )
+            raise
+
+        if not isinstance(attr_to_balance, list):
+            attr_to_balance = [attr_to_balance]
 
         if self.classifier == "cell":
             # remove cell states representing < rare_threshold of cells
@@ -505,6 +524,7 @@ class Classifier:
         output_directory,
         output_prefix,
         save_eval_output=True,
+        gene_balance=False,
     ):
         """
         Train cell state or gene classifier using all data.
@@ -525,13 +545,20 @@ class Classifier:
         save_eval_output : bool
             | Whether to save cross-fold eval output
             | Saves as pickle file of dictionary of eval metrics
-
+        gene_balance : None, bool
+            | Whether to automatically balance genes in training set.
+            | Only available for binary gene classifications.
+            
         **Output**
 
         Returns trainer after fine-tuning with all data.
 
         """
 
+        if (gene_balance is True) and (len(self.gene_class_dict.values())!=2):
+            logger.error("Automatically balancing gene sets for training is only available for binary gene classifications.")
+            raise
+        
         ##### Load data and prepare output directory #####
         # load numerical id to class dictionary (id:class)
         with open(id_class_dict_file, "rb") as f:
@@ -563,7 +590,7 @@ class Classifier:
             )
             assert len(targets) == len(labels)
             data = cu.prep_gene_classifier_all_data(
-                data, targets, labels, self.max_ncells, self.nproc
+                data, targets, labels, self.max_ncells, self.nproc, gene_balance
             )
 
         trainer = self.train_classifier(
@@ -582,12 +609,15 @@ class Classifier:
         split_id_dict=None,
         attr_to_split=None,
         attr_to_balance=None,
+        gene_balance=False,
         max_trials=100,
         pval_threshold=0.1,
         save_eval_output=True,
         predict_eval=True,
         predict_trainer=False,
         n_hyperopt_trials=0,
+        save_gene_split_datasets=True,
+        debug_gene_split_datasets=False,
     ):
         """
         (Cross-)validate cell state or gene classifier.
@@ -622,6 +652,9 @@ class Classifier:
         attr_to_balance : None, list
             | List of attribute keys on which to balance data while splitting on attr_to_split
             | e.g. ["age", "sex"] for balancing these characteristics while splitting by patient
+        gene_balance : None, bool
+            | Whether to automatically balance genes in training set.
+            | Only available for binary gene classifications.
         max_trials : None, int
             | Maximum number of trials of random splitting to try to achieve balanced other attribute
             | If no split is found without significant (p < pval_threshold) differences in other attributes, will select best
@@ -640,11 +673,17 @@ class Classifier:
         n_hyperopt_trials : int
             | Number of trials to run for hyperparameter optimization
             | If 0, will not optimize hyperparameters
+        save_gene_split_datasets : bool
+            | Whether or not to save train, valid, and test gene-labeled datasets
         """
         if self.num_crossval_splits == 0:
             logger.error("num_crossval_splits must be 1 or 5 to validate.")
             raise
-
+            
+        if (gene_balance is True) and (len(self.gene_class_dict.values())!=2):
+            logger.error("Automatically balancing gene sets for training is only available for binary gene classifications.")
+            raise
+        
         # ensure number of genes in each class is > 5 if validating model
         if self.classifier == "gene":
             insuff_classes = [k for k, v in self.gene_class_dict.items() if len(v) < 5]
@@ -725,7 +764,7 @@ class Classifier:
                 else:
                     # 5-fold cross-validate
                     num_cells = len(data)
-                    fifth_cells = num_cells * 0.2
+                    fifth_cells = int(np.floor(num_cells * 0.2))
                     num_eval = min((self.eval_size * num_cells), fifth_cells)
                     start = i * fifth_cells
                     end = start + num_eval
@@ -804,8 +843,19 @@ class Classifier:
                     self.max_ncells,
                     iteration_num,
                     self.nproc,
+                    gene_balance,
                 )
-
+                
+                if save_gene_split_datasets is True:
+                    for split_name in ["train", "valid"]:
+                        labeled_dataset_output_path = (
+                    Path(output_dir) / f"{output_prefix}_{split_name}_gene_labeled_ksplit{iteration_num}"
+                ).with_suffix(".dataset")
+                        if split_name == "train":
+                            train_data.save_to_disk(str(labeled_dataset_output_path))
+                        elif split_name == "valid":
+                            eval_data.save_to_disk(str(labeled_dataset_output_path))
+                            
                 if self.oos_test_size > 0:
                     test_data = cu.prep_gene_classifier_split(
                         data,
@@ -817,7 +867,14 @@ class Classifier:
                         iteration_num,
                         self.nproc,
                     )
-
+                    if save_gene_split_datasets is True:
+                        test_labeled_dataset_output_path = (
+                    Path(output_dir) / f"{output_prefix}_test_gene_labeled_ksplit{iteration_num}"
+                ).with_suffix(".dataset")
+                        test_data.save_to_disk(str(test_labeled_dataset_output_path))
+                if debug_gene_split_datasets is True:
+                    logger.error("Exiting after saving gene split datasets given debug_gene_split_datasets = True.")
+                    raise
                 if n_hyperopt_trials == 0:
                     trainer = self.train_classifier(
                         model_directory,
@@ -966,7 +1023,7 @@ class Classifier:
         subprocess.call(f"mkdir {output_directory}", shell=True)
 
         ##### Load model and training args #####
-        model = pu.load_model(self.model_type, num_classes, model_directory, "train")
+        model = pu.load_model(self.model_type, num_classes, model_directory, "train", quantize=self.quantize)
         def_training_args, def_freeze_layers = cu.get_default_train_args(
             model, self.classifier, train_data, output_directory
         )
@@ -990,14 +1047,14 @@ class Classifier:
         ##### Fine-tune the model #####
         # define the data collator
         if self.classifier == "cell":
-            data_collator = DataCollatorForCellClassification()
+            data_collator = DataCollatorForCellClassification(token_dictionary=self.token_dictionary)
         elif self.classifier == "gene":
-            data_collator = DataCollatorForGeneClassification()
+            data_collator = DataCollatorForGeneClassification(token_dictionary=self.token_dictionary)
 
         # define function to initiate model
         def model_init():
             model = pu.load_model(
-                self.model_type, num_classes, model_directory, "train"
+                self.model_type, num_classes, model_directory, "train", quantize=self.quantize
             )
 
             if self.freeze_layers is not None:
@@ -1009,7 +1066,8 @@ class Classifier:
                     for param in module.parameters():
                         param.requires_grad = False
 
-            model = model.to("cuda:0")
+            if self.quantize is False:
+                model = model.to("cuda:0")
             return model
 
         # create the trainer
@@ -1122,7 +1180,7 @@ class Classifier:
         subprocess.call(f"mkdir {output_directory}", shell=True)
 
         ##### Load model and training args #####
-        model = pu.load_model(self.model_type, num_classes, model_directory, "train")
+        model = pu.load_model(self.model_type, num_classes, model_directory, "train", quantize=self.quantize)
 
         def_training_args, def_freeze_layers = cu.get_default_train_args(
             model, self.classifier, train_data, output_directory
@@ -1152,9 +1210,9 @@ class Classifier:
         ##### Fine-tune the model #####
         # define the data collator
         if self.classifier == "cell":
-            data_collator = DataCollatorForCellClassification()
+            data_collator = DataCollatorForCellClassification(token_dictionary=self.token_dictionary)
         elif self.classifier == "gene":
-            data_collator = DataCollatorForGeneClassification()
+            data_collator = DataCollatorForGeneClassification(token_dictionary=self.token_dictionary)
 
         # create the trainer
         trainer = Trainer(
@@ -1276,7 +1334,7 @@ class Classifier:
         test_data = pu.load_and_filter(None, self.nproc, test_data_file)
 
         # load previously fine-tuned model
-        model = pu.load_model(self.model_type, num_classes, model_directory, "eval")
+        model = pu.load_model(self.model_type, num_classes, model_directory, "eval", quantize=self.quantize)
 
         # evaluate the model
         result = self.evaluate_model(

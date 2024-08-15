@@ -1,4 +1,5 @@
 {
+  "_name_or_path": "/gladstone/theodoris/lab/pretrained_models/encoder/240402_194213_geneformer_94M_L12_emb512_SL4096_E3_B4_LR0.0005_LScosine_WU5000_Oadamw_DS8/models",
   "architectures": [
     "BertForMaskedLM"
   ],

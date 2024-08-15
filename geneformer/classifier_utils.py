@@ -137,21 +137,22 @@ def label_gene_classes(example, class_id_dict, gene_class_dict):
 
 
 def prep_gene_classifier_train_eval_split(
-    data, targets, labels, train_index, eval_index, max_ncells, iteration_num, num_proc
+    data, targets, labels, train_index, eval_index, max_ncells, iteration_num, num_proc, balance=False
 ):
     # generate cross-validation splits
     train_data = prep_gene_classifier_split(
-        data, targets, labels, train_index, "train", max_ncells, iteration_num, num_proc
+        data, targets, labels, train_index, "train", max_ncells, iteration_num, num_proc, balance
     )
     eval_data = prep_gene_classifier_split(
-        data, targets, labels, eval_index, "eval", max_ncells, iteration_num, num_proc
+        data, targets, labels, eval_index, "eval", max_ncells, iteration_num, num_proc, balance
     )
     return train_data, eval_data
 
 
 def prep_gene_classifier_split(
-    data, targets, labels, index, subset_name, max_ncells, iteration_num, num_proc
+    data, targets, labels, index, subset_name, max_ncells, iteration_num, num_proc, balance=False
 ):
+
     # generate cross-validation splits
     targets = np.array(targets)
     labels = np.array(labels)
@@ -172,6 +173,10 @@ def prep_gene_classifier_split(
         f"Filtered {round((1-len(subset_data)/len(data))*100)}%; {len(subset_data)} remain\n"
     )
 
+    # balance gene subsets if train
+    if (subset_name == "train") and (balance is True):
+        subset_data, label_dict_subset = balance_gene_split(subset_data, label_dict_subset, num_proc)
+
     # subsample to max_ncells
     subset_data = downsample_and_shuffle(subset_data, max_ncells, None, None)
 
@@ -187,7 +192,7 @@ def prep_gene_classifier_split(
     return subset_data
 
 
-def prep_gene_classifier_all_data(data, targets, labels, max_ncells, num_proc):
+def prep_gene_classifier_all_data(data, targets, labels, max_ncells, num_proc, balance=False):
     targets = np.array(targets)
     labels = np.array(labels)
     label_dict_train = dict(zip(targets, labels))
@@ -205,6 +210,9 @@ def prep_gene_classifier_all_data(data, targets, labels, max_ncells, num_proc):
         f"Filtered {round((1-len(train_data)/len(data))*100)}%; {len(train_data)} remain\n"
     )
 
+    if balance is True:
+        train_data, label_dict_train = balance_gene_split(train_data, label_dict_train, num_proc)
+    
     # subsample to max_ncells
     train_data = downsample_and_shuffle(train_data, max_ncells, None, None)
 
@@ -218,6 +226,110 @@ def prep_gene_classifier_all_data(data, targets, labels, max_ncells, num_proc):
     train_data = train_data.map(train_classes_to_ids, num_proc=num_proc)
 
     return train_data
+
+
+def balance_gene_split(subset_data, label_dict_subset, num_proc):
+    # count occurrence of genes in each label category
+    label0_counts, label1_counts = count_genes_for_balancing(subset_data, label_dict_subset, num_proc)
+    label_ratio_0to1 = label0_counts/label1_counts
+    
+    if 8/10 <= label_ratio_0to1 <= 10/8:
+        # gene sets already balanced
+        logger.info(
+            "Gene sets were already balanced within 0.8-1.25 fold and did not require balancing.\n"
+        )
+        return subset_data, label_dict_subset
+    else:
+        label_ratio_0to1_orig = label_ratio_0to1+0
+        label_dict_subset_orig = label_dict_subset.copy()
+        # balance gene sets
+        max_ntrials = 25
+        boost = 1
+        if label_ratio_0to1 > 10/8:
+            # downsample label 0
+            for i in range(max_ntrials):
+                label0 = 0
+                label0_genes = [k for k,v in label_dict_subset.items() if v == label0]
+                label0_ngenes = len(label0_genes)
+                label0_nremove = max(1,int(np.floor(label0_ngenes - label0_ngenes/(label_ratio_0to1*boost))))
+                random.seed(i)
+                label0_remove_genes = random.sample(label0_genes, label0_nremove)
+                label_dict_subset_new = {k:v for k,v in label_dict_subset.items() if k not in label0_remove_genes}
+                label0_counts, label1_counts = count_genes_for_balancing(subset_data, label_dict_subset_new, num_proc)
+                label_ratio_0to1 = label0_counts/label1_counts
+                if 8/10 <= label_ratio_0to1 <= 10/8:
+                    # if gene sets now balanced, return new filtered data and new label_dict_subset
+                    return filter_data_balanced_genes(subset_data, label_dict_subset_new, num_proc)
+                elif label_ratio_0to1 > 10/8:
+                    boost = boost*1.1
+                elif label_ratio_0to1 < 8/10:
+                    boost = boost*0.9
+        else:
+            # downsample label 1
+            for i in range(max_ntrials):
+                label1 = 1
+                label1_genes = [k for k,v in label_dict_subset.items() if v == label1]
+                label1_ngenes = len(label1_genes)
+                label1_nremove = max(1,int(np.floor(label1_ngenes - label1_ngenes/((1/label_ratio_0to1)*boost))))
+                random.seed(i)
+                label1_remove_genes = random.sample(label1_genes, label1_nremove)
+                label_dict_subset_new = {k:v for k,v in label_dict_subset.items() if k not in label1_remove_genes}
+                label0_counts, label1_counts = count_genes_for_balancing(subset_data, label_dict_subset_new, num_proc)
+                label_ratio_0to1 = label0_counts/label1_counts
+                if 8/10 <= label_ratio_0to1 <= 10/8:
+                    # if gene sets now balanced, return new filtered data and new label_dict_subset
+                    return filter_data_balanced_genes(subset_data, label_dict_subset_new, num_proc)
+                elif label_ratio_0to1 < 8/10:
+                    boost = boost*1.1
+                elif label_ratio_0to1 > 10/8:
+                    boost = boost*0.9
+                    
+        assert i+1 == max_ntrials
+        if (label_ratio_0to1 <= label_ratio_0to1_orig < 8/10) or (10/8 > label_ratio_0to1_orig >= label_ratio_0to1):
+            label_ratio_0to1 = label_ratio_0to1_orig
+            label_dict_subset_new = label_dict_subset_orig
+        logger.warning(
+            f"Gene sets were not able to be balanced within 0.8-1.25 fold after {max_ntrials} trials. Imbalance level: {label_ratio_0to1}\n"
+        )
+        return filter_data_balanced_genes(subset_data, label_dict_subset_new, num_proc)
+
+
+def count_genes_for_balancing(subset_data, label_dict_subset, num_proc):
+    def count_targets(example):
+        labels = [
+            label_dict_subset.get(token_id, -100) for token_id in example["input_ids"]
+        ]
+        counter_labels = Counter(labels)
+        # get count of labels 0 or 1, or if absent, return 0
+        example["labels_counts"] = [counter_labels.get(0,0),counter_labels.get(1,0)]
+        return example
+        
+    subset_data = subset_data.map(count_targets, num_proc=num_proc)
+ 
+    label0_counts = sum([counts[0] for counts in subset_data["labels_counts"]])
+    label1_counts = sum([counts[1] for counts in subset_data["labels_counts"]])
+
+    subset_data = subset_data.remove_columns("labels_counts")
+
+    return label0_counts, label1_counts
+
+
+def filter_data_balanced_genes(subset_data, label_dict_subset, num_proc):
+    # function to filter by whether contains labels
+    def if_contains_subset_label(example):
+        a = list(label_dict_subset.keys())
+        b = example["input_ids"]
+        return not set(a).isdisjoint(b)
+
+    # filter dataset for examples containing classes for this split
+    logger.info("Filtering data for balanced genes")
+    subset_data_len_orig = len(subset_data)
+    subset_data = subset_data.filter(if_contains_subset_label, num_proc=num_proc)
+    logger.info(
+        f"Filtered {round((1-len(subset_data)/subset_data_len_orig)*100)}%; {len(subset_data)} remain\n"
+    )
+
+    return subset_data, label_dict_subset
 
 
 def balance_attr_splits(
