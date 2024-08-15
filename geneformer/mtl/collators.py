@@ -1,4 +1,4 @@
-#imports
+# imports
 import torch
 
 from ..collator_for_classification import DataCollatorForGeneClassification
@@ -6,6 +6,7 @@ from ..collator_for_classification import DataCollatorForGeneClassification
 """
 Geneformer collator for multi-task cell classification.
 """
+
 
 class DataCollatorForMultitaskCellClassification(DataCollatorForGeneClassification):
     class_type = "cell"
@@ -47,7 +48,10 @@ class DataCollatorForMultitaskCellClassification(DataCollatorForGeneClassificati
             batch["labels"] = labels
         else:
             # If no labels are present, create empty labels for all tasks
-            batch["labels"] = {task: torch.tensor([], dtype=torch.long) for task in features[0]["input_ids"].keys()}
+            batch["labels"] = {
+                task: torch.tensor([], dtype=torch.long)
+                for task in features[0]["input_ids"].keys()
+            }
 
         return batch
 
@@ -59,7 +63,10 @@ class DataCollatorForMultitaskCellClassification(DataCollatorForGeneClassificati
                 batch[k] = v.clone().detach()
             elif isinstance(v, dict):
                 # Assuming nested structure needs conversion
-                batch[k] = {task: torch.tensor(labels, dtype=torch.int64) for task, labels in v.items()}
+                batch[k] = {
+                    task: torch.tensor(labels, dtype=torch.int64)
+                    for task, labels in v.items()
+                }
             else:
                 batch[k] = torch.tensor(v, dtype=torch.int64)
 

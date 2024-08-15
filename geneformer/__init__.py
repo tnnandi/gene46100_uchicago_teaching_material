@@ -1,6 +1,7 @@
 # ruff: noqa: F401
-from pathlib import Path
 import warnings
+from pathlib import Path
+
 warnings.filterwarnings("ignore", message=".*The 'nopython' keyword.*")  # noqa # isort:skip
 
 GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary_gc95M.pkl"

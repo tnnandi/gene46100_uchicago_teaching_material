@@ -20,8 +20,8 @@ from sklearn.metrics import (
 )
 from tqdm.auto import trange
 
-from .emb_extractor import make_colorbar
 from . import TOKEN_DICTIONARY_FILE
+from .emb_extractor import make_colorbar
 
 logger = logging.getLogger(__name__)
 

@@ -1,18 +1,15 @@
 import itertools as it
 import logging
 import pickle
-import re
 from collections import defaultdict
-from typing import List
 from pathlib import Path
-
+from typing import List
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import torch
 from datasets import Dataset, load_from_disk
-from peft import LoraConfig, get_peft_model 
+from peft import LoraConfig, get_peft_model
 from transformers import (
     BertForMaskedLM,
     BertForSequenceClassification,
@@ -119,7 +116,7 @@ def load_model(model_type, num_classes, model_directory, mode, quantize=False):
     if model_type == "MTLCellClassifier-Quantized":
         model_type = "MTLCellClassifier"
         quantize = True
-    
+
     if mode == "eval":
         output_hidden_states = True
     elif mode == "train":
@@ -131,7 +128,7 @@ def load_model(model_type, num_classes, model_directory, mode, quantize=False):
                 "peft_config": None,
                 "bnb_config": BitsAndBytesConfig(
                     load_in_8bit=True,
-                )
+                ),
             }
         else:
             quantize = {
@@ -141,13 +138,13 @@ def load_model(model_type, num_classes, model_directory, mode, quantize=False):
                     r=64,
                     bias="none",
                     task_type="TokenClassification",
-                  ),
+                ),
                 "bnb_config": BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
-                    bnb_4bit_compute_dtype=torch.bfloat16
-                  )
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                ),
             }
     elif quantize is False:
         quantize = {"bnb_config": None}
@@ -186,7 +183,11 @@ def load_model(model_type, num_classes, model_directory, mode, quantize=False):
     # if eval mode, put the model in eval mode for fwd pass
     if mode == "eval":
         model.eval()
-    if (quantize is False) or (quantize == {'bnb_config': None}) or (model_type == "MTLCellClassifier"):
+    if (
+        (quantize is False)
+        or (quantize == {"bnb_config": None})
+        or (model_type == "MTLCellClassifier")
+    ):
         model = model.to("cuda")
     else:
         model.enable_input_require_grads()
@@ -279,17 +280,19 @@ def overexpress_indices(example):
     example["length"] = len(example["input_ids"])
     return example
 
+
 # if CLS token present, move to 1st rather than 0th position
 def overexpress_indices_special(example):
     indices = example["perturb_index"]
     if any(isinstance(el, list) for el in indices):
         indices = flatten_list(indices)
-    insert_pos = 1 # Insert starting after CLS token
+    insert_pos = 1  # Insert starting after CLS token
     for index in sorted(indices, reverse=False):
         example["input_ids"].insert(insert_pos, example["input_ids"].pop(index))
         insert_pos += 1
     example["length"] = len(example["input_ids"])
     return example
+
 
 # for genes_to_perturb = list of genes to overexpress that are not necessarily expressed in cell
 def overexpress_tokens(example, max_len, special_token):
@@ -310,7 +313,9 @@ def overexpress_tokens(example, max_len, special_token):
     # truncate to max input size, must also truncate original emb to be comparable
     if len(example["input_ids"]) > max_len:
         if special_token:
-            example["input_ids"] = example["input_ids"][0:max_len-1]+[example["input_ids"][-1]]
+            example["input_ids"] = example["input_ids"][0 : max_len - 1] + [
+                example["input_ids"][-1]
+            ]
         else:
             example["input_ids"] = example["input_ids"][0:max_len]
     example["length"] = len(example["input_ids"])
@@ -329,10 +334,13 @@ def truncate_by_n_overflow(example):
     example["length"] = len(example["input_ids"])
     return example
 
+
 def truncate_by_n_overflow_special(example):
     if example["n_overflow"] > 0:
         new_max_len = example["length"] - example["n_overflow"]
-        example["input_ids"] = example["input_ids"][0:new_max_len-1]+[example["input_ids"][-1]]
+        example["input_ids"] = example["input_ids"][0 : new_max_len - 1] + [
+            example["input_ids"][-1]
+        ]
         example["length"] = len(example["input_ids"])
     return example
 
@@ -477,19 +485,24 @@ def make_perturbation_batch_special(
             range_start = 1
         elif perturb_type in ["delete", "inhibit"]:
             range_start = 0
-        range_start += 1 # Starting after the CLS token
+        range_start += 1  # Starting after the CLS token
         indices_to_perturb = [
-            [i] for i in range(range_start, example_cell["length"][0]-1) # And excluding the EOS token
+            [i]
+            for i in range(
+                range_start, example_cell["length"][0] - 1
+            )  # And excluding the EOS token
         ]
 
     # elif combo_lvl > 0 and anchor_token is None:
     ## to implement
-    elif combo_lvl > 0 and (anchor_token is not None): 
+    elif combo_lvl > 0 and (anchor_token is not None):
         example_input_ids = example_cell["input_ids"][0]
         anchor_index = example_input_ids.index(anchor_token[0])
         indices_to_perturb = [
             sorted([anchor_index, i]) if i != anchor_index else None
-            for i in range(1, example_cell["length"][0]-1) # Exclude CLS and EOS tokens
+            for i in range(
+                1, example_cell["length"][0] - 1
+            )  # Exclude CLS and EOS tokens
         ]
         indices_to_perturb = [item for item in indices_to_perturb if item is not None]
     else:
@@ -508,7 +521,9 @@ def make_perturbation_batch_special(
                     list(x) for x in it.combinations(indices_to_perturb, combo_lvl + 1)
                 ]
         else:
-            all_indices = [[i] for i in range(1, example_cell["length"][0]-1)] # Exclude CLS and EOS tokens
+            all_indices = [
+                [i] for i in range(1, example_cell["length"][0] - 1)
+            ]  # Exclude CLS and EOS tokens
             all_indices = [
                 index for index in all_indices if index not in indices_to_perturb
             ]
@@ -535,7 +550,7 @@ def make_perturbation_batch_special(
         )
     elif perturb_type == "overexpress":
         perturbation_dataset = perturbation_dataset.map(
-                overexpress_indices_special, num_proc=num_proc_i
+            overexpress_indices_special, num_proc=num_proc_i
         )
 
     perturbation_dataset = perturbation_dataset.map(measure_length, num_proc=num_proc_i)
@@ -743,7 +758,7 @@ def quant_cos_sims(
     # against original cell
     if cell_states_to_model is None or emb_mode == "gene":
         cos_sims = cos(perturbation_emb, original_emb).to("cuda")
-        
+
     elif cell_states_to_model is not None and emb_mode == "cell":
         possible_states = get_possible_states(cell_states_to_model)
         cos_sims = dict(zip(possible_states, [[] for _ in range(len(possible_states))]))
@@ -867,27 +882,28 @@ def validate_cell_states_to_model(cell_states_to_model):
             )
             raise
 
+
 class GeneIdHandler:
     def __init__(self, raise_errors=False):
         def invert_dict(dict_obj):
-            return {v:k for k,v in dict_obj.items()}
-        
+            return {v: k for k, v in dict_obj.items()}
+
         self.raise_errors = raise_errors
-        
-        with open(TOKEN_DICTIONARY_FILE, 'rb') as f:
+
+        with open(TOKEN_DICTIONARY_FILE, "rb") as f:
             self.gene_token_dict = pickle.load(f)
             self.token_gene_dict = invert_dict(self.gene_token_dict)
 
-        with open(ENSEMBL_DICTIONARY_FILE, 'rb') as f:
+        with open(ENSEMBL_DICTIONARY_FILE, "rb") as f:
             self.id_gene_dict = pickle.load(f)
             self.gene_id_dict = invert_dict(self.id_gene_dict)
-            
+
     def ens_to_token(self, ens_id):
         if not self.raise_errors:
             return self.gene_token_dict.get(ens_id, ens_id)
         else:
             return self.gene_token_dict[ens_id]
-    
+
     def token_to_ens(self, token):
         if not self.raise_errors:
             return self.token_gene_dict.get(token, token)
@@ -899,15 +915,15 @@ class GeneIdHandler:
             return self.gene_id_dict.get(ens_id, ens_id)
         else:
             return self.gene_id_dict[ens_id]
-    
+
     def symbol_to_ens(self, symbol):
         if not self.raise_errors:
             return self.id_gene_dict.get(symbol, symbol)
         else:
             return self.id_gene_dict[symbol]
-    
+
     def token_to_symbol(self, token):
         return self.ens_to_symbol(self.token_to_ens(token))
-    
+
     def symbol_to_token(self, symbol):
         return self.ens_to_token(self.symbol_to_ens(symbol))

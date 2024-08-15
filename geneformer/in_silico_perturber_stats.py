@@ -37,8 +37,8 @@ from scipy.stats import ranksums
 from sklearn.mixture import GaussianMixture
 from tqdm.auto import tqdm, trange
 
+from . import ENSEMBL_DICTIONARY_FILE, TOKEN_DICTIONARY_FILE
 from .perturber_utils import flatten_list, validate_cell_states_to_model
-from . import TOKEN_DICTIONARY_FILE, ENSEMBL_DICTIONARY_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -194,23 +194,29 @@ def get_impact_component(test_value, gaussian_mixture_model):
 def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
     names = ["Cosine_sim", "Gene"]
     cos_sims_full_dfs = []
-    if isinstance(genes_perturbed,list):
-        if len(genes_perturbed)>1:
-            gene_ids_df = cos_sims_df.loc[np.isin([set(idx) for idx in cos_sims_df["Ensembl_ID"]], set(genes_perturbed)), :]
+    if isinstance(genes_perturbed, list):
+        if len(genes_perturbed) > 1:
+            gene_ids_df = cos_sims_df.loc[
+                np.isin(
+                    [set(idx) for idx in cos_sims_df["Ensembl_ID"]],
+                    set(genes_perturbed),
+                ),
+                :,
+            ]
         else:
-            gene_ids_df = cos_sims_df.loc[np.isin(cos_sims_df["Ensembl_ID"], genes_perturbed), :]
+            gene_ids_df = cos_sims_df.loc[
+                np.isin(cos_sims_df["Ensembl_ID"], genes_perturbed), :
+            ]
     else:
         logger.error(
-                        "aggregate_data is for perturbation of single gene or single group of genes. genes_to_perturb should be formatted as list."
-                    )
-        raise        
+            "aggregate_data is for perturbation of single gene or single group of genes. genes_to_perturb should be formatted as list."
+        )
+        raise
 
     if gene_ids_df.empty:
-        logger.error(
-                        "genes_to_perturb not found in data."
-                    )
+        logger.error("genes_to_perturb not found in data.")
         raise
-        
+
     tokens = gene_ids_df["Gene"]
     symbols = gene_ids_df["Gene_name"]
 
@@ -223,7 +229,7 @@ def isp_aggregate_grouped_perturb(cos_sims_df, dict_list, genes_perturbed):
         df["Cosine_sim"] = cos_shift_data
         df["Gene"] = symbol
         cos_sims_full_dfs.append(df)
-    
+
     return pd.concat(cos_sims_full_dfs)
 
 
@@ -1018,7 +1024,7 @@ class InSilicoPerturberStats:
             },
             index=[i for i in range(len(gene_list))],
         )
-        
+
         if self.mode == "goal_state_shift":
             cos_sims_df = isp_stats_to_goal_state(
                 cos_sims_df_initial,
@@ -1045,12 +1051,16 @@ class InSilicoPerturberStats:
                 cos_sims_df_initial, dict_list, self.combos, self.anchor_token
             )
 
-        elif self.mode == "aggregate_data":        
-            cos_sims_df = isp_aggregate_grouped_perturb(cos_sims_df_initial, dict_list, self.genes_perturbed)
+        elif self.mode == "aggregate_data":
+            cos_sims_df = isp_aggregate_grouped_perturb(
+                cos_sims_df_initial, dict_list, self.genes_perturbed
+            )
 
         elif self.mode == "aggregate_gene_shifts":
             if (self.genes_perturbed == "all") and (self.combos == 0):
-                tuple_types = [True if isinstance(genes, tuple) else False for genes in gene_list]
+                tuple_types = [
+                    True if isinstance(genes, tuple) else False for genes in gene_list
+                ]
                 if all(tuple_types):
                     token_dtype = "tuple"
                 elif not any(tuple_types):
@@ -1059,13 +1069,13 @@ class InSilicoPerturberStats:
                     token_dtype = "mix"
             else:
                 token_dtype = "mix"
-            
+
             cos_sims_df = isp_aggregate_gene_shifts(
                 cos_sims_df_initial,
                 dict_list,
                 self.gene_token_id_dict,
                 self.gene_id_name_dict,
-                token_dtype
+                token_dtype,
             )
 
         # save perturbation stats to output_path

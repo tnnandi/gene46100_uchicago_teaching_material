@@ -28,9 +28,8 @@ Geneformer multi-task cell classifier.
 
 import logging
 import os
-from .mtl import train_utils
-from .mtl import utils
-from .mtl import eval_utils
+
+from .mtl import eval_utils, train_utils, utils
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +89,8 @@ class MTLClassifier:
         wandb_project=None,
         gradient_clipping=False,
         max_grad_norm=None,
-        seed=42  # Default seed value
+        seed=42,  # Default seed value
     ):
-
         """
         Initialize Geneformer multi-task classifier.
         **Parameters:**
@@ -165,11 +163,11 @@ class MTLClassifier:
         self.batch_size = batch_size
         self.n_trials = n_trials
         self.study_name = study_name
-        
+
         if max_layers_to_freeze is None:
             # Dynamically determine the range of layers to freeze
             layer_freeze_range = utils.get_layer_freeze_range(pretrained_path)
-            self.max_layers_to_freeze = {"min": 1, "max": layer_freeze_range['max']}
+            self.max_layers_to_freeze = {"min": 1, "max": layer_freeze_range["max"]}
         else:
             self.max_layers_to_freeze = max_layers_to_freeze
 
@@ -178,48 +176,37 @@ class MTLClassifier:
         self.use_data_parallel = use_data_parallel
         self.use_attention_pooling = use_attention_pooling
         self.use_task_weights = use_task_weights
-        self.hyperparameters = hyperparameters if hyperparameters is not None else {
-            "learning_rate": {
-                "type": "float",
-                "low": 1e-5,
-                "high": 1e-3,
-                "log": True
-            },
-            "warmup_ratio": {
-                "type": "float",
-                "low": 0.005,
-                "high": 0.01
-            },
-            "weight_decay": {
-                "type": "float",
-                "low": 0.01,
-                "high": 0.1
-            },
-            "dropout_rate": {
-                "type": "float",
-                "low": 0.0,
-                "high": 0.7
-            },
-            "lr_scheduler_type": {
-                "type": "categorical",
-                "choices": ["cosine"]
-            },
-            "task_weights": {
-                "type": "float",
-                "low": 0.1,
-                "high": 2.0
+        self.hyperparameters = (
+            hyperparameters
+            if hyperparameters is not None
+            else {
+                "learning_rate": {
+                    "type": "float",
+                    "low": 1e-5,
+                    "high": 1e-3,
+                    "log": True,
+                },
+                "warmup_ratio": {"type": "float", "low": 0.005, "high": 0.01},
+                "weight_decay": {"type": "float", "low": 0.01, "high": 0.1},
+                "dropout_rate": {"type": "float", "low": 0.0, "high": 0.7},
+                "lr_scheduler_type": {"type": "categorical", "choices": ["cosine"]},
+                "task_weights": {"type": "float", "low": 0.1, "high": 2.0},
             }
-        }
-        self.manual_hyperparameters = manual_hyperparameters if manual_hyperparameters is not None else {
-            "learning_rate": 0.001,
-            "warmup_ratio": 0.01,
-            "weight_decay": 0.1,
-            "dropout_rate": 0.1,
-            "lr_scheduler_type": "cosine",
-            "use_attention_pooling": False,
-            "task_weights": [1, 1],
-            "max_layers_to_freeze": 2
-        }
+        )
+        self.manual_hyperparameters = (
+            manual_hyperparameters
+            if manual_hyperparameters is not None
+            else {
+                "learning_rate": 0.001,
+                "warmup_ratio": 0.01,
+                "weight_decay": 0.1,
+                "dropout_rate": 0.1,
+                "lr_scheduler_type": "cosine",
+                "use_attention_pooling": False,
+                "task_weights": [1, 1],
+                "max_layers_to_freeze": 2,
+            }
+        )
         self.use_manual_hyperparameters = use_manual_hyperparameters
         self.use_wandb = use_wandb
         self.wandb_project = wandb_project
@@ -236,13 +223,19 @@ class MTLClassifier:
 
         # set up output directories
         if self.results_dir is not None:
-            self.trials_results_path = f"{self.results_dir}/results.txt".replace("//","/")
-        
+            self.trials_results_path = f"{self.results_dir}/results.txt".replace(
+                "//", "/"
+            )
+
         for output_dir in [self.model_save_path, self.results_dir]:
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 
-        self.config = {key: value for key, value in self.__dict__.items() if key in self.valid_option_dict}
+        self.config = {
+            key: value
+            for key, value in self.__dict__.items()
+            if key in self.valid_option_dict
+        }
 
     def validate_options(self):
         # confirm arguments are within valid options and compatible with each other
@@ -264,19 +257,35 @@ class MTLClassifier:
                 f"Invalid option for {attr_name}. "
                 f"Valid options for {attr_name}: {valid_options}"
             )
-            raise ValueError(f"Invalid option for {attr_name}. Valid options for {attr_name}: {valid_options}")
+            raise ValueError(
+                f"Invalid option for {attr_name}. Valid options for {attr_name}: {valid_options}"
+            )
 
     def run_manual_tuning(self):
         """
         Manual hyperparameter tuning and multi-task fine-tuning of pretrained model.
         """
-        required_variable_names = ["train_path", "val_path", "pretrained_path", "model_save_path", "results_dir"]
-        required_variables = [self.train_path, self.val_path, self.pretrained_path, self.model_save_path, self.results_dir]
+        required_variable_names = [
+            "train_path",
+            "val_path",
+            "pretrained_path",
+            "model_save_path",
+            "results_dir",
+        ]
+        required_variables = [
+            self.train_path,
+            self.val_path,
+            self.pretrained_path,
+            self.model_save_path,
+            self.results_dir,
+        ]
         req_var_dict = dict(zip(required_variable_names, required_variables))
         self.validate_additional_options(req_var_dict)
 
         if not self.use_manual_hyperparameters:
-            raise ValueError("Manual hyperparameters are not enabled. Set use_manual_hyperparameters to True.")
+            raise ValueError(
+                "Manual hyperparameters are not enabled. Set use_manual_hyperparameters to True."
+            )
 
         # Ensure manual_hyperparameters are set in the config
         self.config["manual_hyperparameters"] = self.manual_hyperparameters
@@ -302,8 +311,20 @@ class MTLClassifier:
         Hyperparameter optimization and/or multi-task fine-tuning of pretrained model.
         """
 
-        required_variable_names = ["train_path", "val_path", "pretrained_path", "model_save_path", "results_dir"]
-        required_variables = [self.train_path, self.val_path, self.pretrained_path, self.model_save_path, self.results_dir]
+        required_variable_names = [
+            "train_path",
+            "val_path",
+            "pretrained_path",
+            "model_save_path",
+            "results_dir",
+        ]
+        required_variables = [
+            self.train_path,
+            self.val_path,
+            self.pretrained_path,
+            self.model_save_path,
+            self.results_dir,
+        ]
         req_var_dict = dict(zip(required_variable_names, required_variables))
         self.validate_additional_options(req_var_dict)
 
@@ -322,7 +343,7 @@ class MTLClassifier:
         self.validate_additional_options(req_var_dict)
 
         eval_utils.load_and_evaluate_test_model(self.config)
-        
+
     def save_model_without_heads(
         self,
     ):
@@ -335,4 +356,6 @@ class MTLClassifier:
         req_var_dict = dict(zip(required_variable_names, required_variables))
         self.validate_additional_options(req_var_dict)
 
-        utils.save_model_without_heads(os.path.join(self.model_save_path, "GeneformerMultiTask"))
+        utils.save_model_without_heads(
+            os.path.join(self.model_save_path, "GeneformerMultiTask")
+        )

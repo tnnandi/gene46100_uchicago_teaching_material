@@ -24,8 +24,8 @@ import torch
 from tdigest import TDigest
 from tqdm.auto import trange
 
-from . import perturber_utils as pu
 from . import TOKEN_DICTIONARY_FILE
+from . import perturber_utils as pu
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def get_embs(
 ):
     model_input_size = pu.get_model_input_size(model)
     total_batch_length = len(filtered_input_data)
-    
+
     if summary_stat is None:
         embs_list = []
     elif summary_stat is not None:
@@ -73,17 +73,23 @@ def get_embs(
     if emb_mode == "cls":
         assert cls_present, "<cls> token missing in token dictionary"
         # Check to make sure that the first token of the filtered input data is cls token
-        gene_token_dict = {v:k for k,v in token_gene_dict.items()}
+        gene_token_dict = {v: k for k, v in token_gene_dict.items()}
         cls_token_id = gene_token_dict["<cls>"]
-        assert filtered_input_data["input_ids"][0][0] == cls_token_id, "First token is not <cls> token value"
+        assert (
+            filtered_input_data["input_ids"][0][0] == cls_token_id
+        ), "First token is not <cls> token value"
     elif emb_mode == "cell":
         if cls_present:
-            logger.warning("CLS token present in token dictionary, excluding from average.")    
+            logger.warning(
+                "CLS token present in token dictionary, excluding from average."
+            )
         if eos_present:
-            logger.warning("EOS token present in token dictionary, excluding from average.")
-            
+            logger.warning(
+                "EOS token present in token dictionary, excluding from average."
+            )
+
     overall_max_len = 0
-        
+
     for i in trange(0, total_batch_length, forward_batch_size, leave=(not silent)):
         max_range = min(i + forward_batch_size, total_batch_length)
 
@@ -108,7 +114,7 @@ def get_embs(
 
         if emb_mode == "cell":
             if cls_present:
-                non_cls_embs = embs_i[:, 1:, :] # Get all layers except the embs
+                non_cls_embs = embs_i[:, 1:, :]  # Get all layers except the embs
                 if eos_present:
                     mean_embs = pu.mean_nonpadding_embs(non_cls_embs, original_lens - 2)
                 else:
@@ -146,10 +152,10 @@ def get_embs(
                     del embs_h
                     del dict_h
         elif emb_mode == "cls":
-            cls_embs = embs_i[:,0,:].clone().detach() # CLS token layer
+            cls_embs = embs_i[:, 0, :].clone().detach()  # CLS token layer
             embs_list.append(cls_embs)
             del cls_embs
-            
+
         overall_max_len = max(overall_max_len, max_len)
         del outputs
         del minibatch
@@ -157,8 +163,7 @@ def get_embs(
         del embs_i
 
         torch.cuda.empty_cache()
-        
-        
+
     if summary_stat is None:
         if (emb_mode == "cell") or (emb_mode == "cls"):
             embs_stack = torch.cat(embs_list, dim=0)
@@ -203,6 +208,7 @@ def accumulate_tdigests(embs_tdigests, mean_embs, emb_dims):
         for i in range(mean_embs.size(0))
         for j in range(emb_dims)
     ]
+
 
 def update_tdigest_dict(embs_tdigests_dict, gene, gene_embs, emb_dims):
     embs_tdigests_dict[gene] = accumulate_tdigests(
@@ -294,11 +300,13 @@ def plot_umap(embs_df, emb_dims, label, output_file, kwargs_dict, seed=0):
 
     with plt.rc_context():
         ax = sc.pl.umap(adata, color=label, show=False, **default_kwargs_dict)
-        ax.legend(markerscale=2,
-                  frameon=False,
-                  loc="center left",
-                  bbox_to_anchor=(1, 0.5),
-                  ncol=(1 if len(cats) <= 14 else 2 if len(cats) <= 30 else 3))
+        ax.legend(
+            markerscale=2,
+            frameon=False,
+            loc="center left",
+            bbox_to_anchor=(1, 0.5),
+            ncol=(1 if len(cats) <= 14 else 2 if len(cats) <= 30 else 3),
+        )
         plt.show()
         plt.savefig(output_file, bbox_inches="tight")
 
@@ -394,7 +402,7 @@ class EmbExtractor:
         "emb_label": {None, list},
         "labels_to_plot": {None, list},
         "forward_batch_size": {int},
-        "token_dictionary_file" : {None, str},
+        "token_dictionary_file": {None, str},
         "nproc": {int},
         "summary_stat": {None, "mean", "median", "exact_mean", "exact_median"},
     }
@@ -631,13 +639,15 @@ class EmbExtractor:
             embs = embs.mean(dim=0)
             emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
-                embs_df[0:emb_dims-1].mean(axis="rows"), columns=[self.exact_summary_stat]
+                embs_df[0 : emb_dims - 1].mean(axis="rows"),
+                columns=[self.exact_summary_stat],
             ).T
         elif self.exact_summary_stat == "exact_median":
             embs = torch.median(embs, dim=0)[0]
             emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
-                embs_df[0:emb_dims-1].median(axis="rows"), columns=[self.exact_summary_stat]
+                embs_df[0 : emb_dims - 1].median(axis="rows"),
+                columns=[self.exact_summary_stat],
             ).T
 
         if cell_state is not None:
