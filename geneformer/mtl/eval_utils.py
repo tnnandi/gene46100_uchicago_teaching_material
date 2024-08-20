@@ -1,7 +1,7 @@
 import pandas as pd
 
-from .data import prepare_test_loader
-from .imports import *
+from .imports import *  # noqa # isort:skip
+from .data import prepare_test_loader  # noqa # isort:skip
 from .model import GeneformerMultiTask
 
 
