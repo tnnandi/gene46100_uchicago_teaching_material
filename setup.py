@@ -6,7 +6,7 @@ setup(
     author="Christina Theodoris",
     author_email="christina.theodoris@gladstone.ucsf.edu",
     description="Geneformer is a transformer model pretrained \
-                 on a large-scale corpus of ~30 million single \
+                 on a large-scale corpus of single \
                  cell transcriptomes to enable context-aware \
                  predictions in settings with limited data in \
                  network biology.",
@@ -19,8 +19,11 @@ setup(
         "loompy",
         "matplotlib",
         "numpy",
+        "optuna",
+        "optuna-integration",
         "packaging",
         "pandas",
+        "peft",
         "pyarrow",
         "pytz",
         "ray",
