@@ -1065,11 +1065,11 @@ class Classifier:
         # define the data collator
         if self.classifier == "cell":
             data_collator = DataCollatorForCellClassification(
-                token_dictionary=self.token_dictionary
+                token_dictionary=self.gene_token_dict
             )
         elif self.classifier == "gene":
             data_collator = DataCollatorForGeneClassification(
-                token_dictionary=self.token_dictionary
+                token_dictionary=self.gene_token_dict
             )
 
         # define function to initiate model
@@ -1242,11 +1242,11 @@ class Classifier:
         # define the data collator
         if self.classifier == "cell":
             data_collator = DataCollatorForCellClassification(
-                token_dictionary=self.token_dictionary
+                token_dictionary=self.gene_token_dict
             )
         elif self.classifier == "gene":
             data_collator = DataCollatorForGeneClassification(
-                token_dictionary=self.token_dictionary
+                token_dictionary=self.gene_token_dict
             )
 
         # create the trainer
