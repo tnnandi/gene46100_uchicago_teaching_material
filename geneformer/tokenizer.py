@@ -18,6 +18,9 @@ Geneformer tokenizer.
 | No cell metadata is required, but custom cell attributes may be passed onto the tokenized dataset by providing a dictionary of custom attributes to be added, which is formatted as loom_col_attr_name : desired_dataset_col_attr_name. For example, if the original .loom dataset has column attributes "cell_type" and "organ_major" and one would like to retain these attributes as labels in the tokenized dataset with the new names "cell_type" and "organ", respectively, the following custom attribute dictionary should be provided: {"cell_type": "cell_type", "organ_major": "organ"}.
 | Additionally, if the original .loom file contains a cell column attribute called "filter_pass", this column will be used as a binary indicator of whether to include these cells in the tokenized data. All cells with "1" in this attribute will be tokenized, whereas the others will be excluded. One may use this column to indicate QC filtering or other criteria for selection for inclusion in the final tokenized dataset.
 | If one's data is in other formats besides .loom or .h5ad, one can use the relevant tools (such as Anndata tools) to convert the file to a .loom or .h5ad format prior to running the transcriptome tokenizer.
+| OF NOTE: Take care that the correct token dictionary and gene median file is used for the correct model.
+| OF NOTE: For 95M model series, special_token should be True and model_input_size should be 4096.
+| OF NOTE: For 30M model series, special_token should be False and model_input_size should be 2048.
 """
 
 from __future__ import annotations
@@ -255,8 +258,8 @@ class TranscriptomeTokenizer:
         custom_attr_name_dict=None,
         nproc=1,
         chunk_size=512,
-        model_input_size=2048,
-        special_token=False,
+        model_input_size=4096,
+        special_token=True,
         collapse_gene_ids=True,
         gene_median_file=GENE_MEDIAN_FILE,
         token_dictionary_file=TOKEN_DICTIONARY_FILE,
@@ -273,10 +276,12 @@ class TranscriptomeTokenizer:
             | Number of processes to use for dataset mapping.
         chunk_size : int = 512
             | Chunk size for anndata tokenizer.
-        model_input_size : int = 2048
+        model_input_size : int = 4096
             | Max input size of model to truncate input to.
-        special_token : bool = False
+            | For the 30M model series, should be 2048. For the 95M model series, should be 4096.
+        special_token : bool = True
             | Adds CLS token before and EOS token after rank value encoding.
+            | For the 30M model series, should be False. For the 95M model series, should be True.
         collapse_gene_ids : bool = True
             | Whether to collapse gene IDs based on gene mapping dictionary.
         gene_median_file : Path
@@ -320,6 +325,14 @@ class TranscriptomeTokenizer:
                     "<cls> and <eos> required in gene_token_dict when special_token = True."
                 )
                 raise
+
+        if not self.special_token:
+            if ("<cls>" in self.gene_token_dict.keys()) and (
+                "<eos>" in self.gene_token_dict.keys()
+            ):
+                logger.warning(
+                    "<cls> and <eos> are in gene_token_dict but special_token = False. Please note that for 95M model series, special_token should be True."
+                )
 
         # if collapsing duplicate gene IDs
         self.collapse_gene_ids = collapse_gene_ids
