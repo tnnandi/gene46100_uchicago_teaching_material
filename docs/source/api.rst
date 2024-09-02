@@ -17,6 +17,14 @@ Classifier
 
    geneformer.classifier
 
+Multitask Classifier
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   geneformer.mtl_classifier
+
 Embedding Extractor
 -------------------
 
