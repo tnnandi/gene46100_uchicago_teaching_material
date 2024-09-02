@@ -1,4 +1,4 @@
-geneformer.mtl_classifier
+geneformer.mtl\_classifier
 =========================
 
 .. automodule:: geneformer.mtl_classifier
