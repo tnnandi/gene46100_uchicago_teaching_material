@@ -25,14 +25,14 @@ from .emb_extractor import make_colorbar
 
 logger = logging.getLogger(__name__)
 
-# load token dictionary (Ensembl IDs:token)
-with open(TOKEN_DICTIONARY_FILE, "rb") as f:
-    gene_token_dict = pickle.load(f)
-
 
 def preprocess_classifier_batch(cell_batch, max_len, label_name):
     if max_len is None:
         max_len = max([len(i) for i in cell_batch["input_ids"]])
+
+    # load token dictionary (Ensembl IDs:token)
+    with open(TOKEN_DICTIONARY_FILE, "rb") as f:
+        gene_token_dict = pickle.load(f)
 
     def pad_label_example(example):
         example[label_name] = np.pad(
