@@ -93,7 +93,9 @@ class MTLClassifier:
     ):
         """
         Initialize Geneformer multi-task classifier.
+        
         **Parameters:**
+        
         task_columns : list
             | List of tasks for cell state classification
             | Input data columns are labeled with corresponding task names

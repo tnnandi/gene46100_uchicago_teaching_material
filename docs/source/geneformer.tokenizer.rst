@@ -11,4 +11,5 @@ geneformer.tokenizer
         tokenize_files,
         tokenize_loom,
         rank_genes,
-        tokenize_cell
+        tokenize_cell,
+        sum_ensembl_ids

@@ -1,5 +1,5 @@
 geneformer.mtl_classifier
-=====================
+=========================
 
 .. automodule:: geneformer.mtl_classifier
    :members:

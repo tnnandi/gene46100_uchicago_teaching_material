@@ -18,7 +18,7 @@ Classifier
    geneformer.classifier
 
 Multitask Classifier
-----------
+--------------------
 
 .. toctree::
    :maxdepth: 1
