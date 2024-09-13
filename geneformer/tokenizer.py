@@ -63,7 +63,6 @@ logger = logging.getLogger(__name__)
 
 from . import ENSEMBL_MAPPING_FILE, GENE_MEDIAN_FILE, TOKEN_DICTIONARY_FILE
 
-
 def rank_genes(gene_vector, gene_tokens):
     """
     Rank gene expression vector.
@@ -100,15 +99,18 @@ def sum_ensembl_ids(
             assert (
                 "ensembl_id" in data.ra.keys()
             ), "'ensembl_id' column missing from data.ra.keys()"
+
+            assert (
+                "ensembl_id_collapsed" not in data.ra.keys()
+            ), "'ensembl_id_collapsed' column already exists in data.ra.keys()"
+            # Check for duplicate Ensembl IDs if collapse_gene_ids is False.
+            # Comparing to gene_token_dict here, would not perform any mapping steps
             gene_ids_in_dict = [
                 gene for gene in data.ra.ensembl_id if gene in gene_token_dict.keys()
             ]
-            if len(gene_ids_in_dict) == len(set(gene_ids_in_dict)):
-                token_genes_unique = True
-            else:
-                token_genes_unique = False
             if collapse_gene_ids is False:
-                if token_genes_unique:
+                
+                if len(gene_ids_in_dict) == len(set(gene_ids_in_dict)):
                     return data_directory
                 else:
                     raise ValueError("Error: data Ensembl IDs non-unique.")
@@ -120,18 +122,17 @@ def sum_ensembl_ids(
                 gene for gene in gene_ids_collapsed if gene in gene_token_dict.keys()
             ]
 
-            if (
-                len(set(gene_ids_collapsed_in_dict)) == len(set(gene_ids_in_dict))
-            ) and token_genes_unique:
+            if len(set(gene_ids_in_dict)) == len(set(gene_ids_collapsed_in_dict)):
+                data.ra["ensembl_id_collapsed"] = gene_ids_collapsed
                 return data_directory
             else:
                 dedup_filename = data_directory.with_name(
                     data_directory.stem + "__dedup.loom"
                 )
-                data.ra["gene_ids_collapsed"] = gene_ids_collapsed
+                data.ra["ensembl_id_collapsed"] = gene_ids_collapsed
                 dup_genes = [
                     idx
-                    for idx, count in Counter(data.ra["gene_ids_collapsed"]).items()
+                    for idx, count in Counter(data.ra["ensembl_id_collapsed"]).items()
                     if count > 1
                 ]
                 num_chunks = int(np.ceil(data.shape[1] / chunk_size))
@@ -142,7 +143,7 @@ def sum_ensembl_ids(
 
                     def process_chunk(view, duplic_genes):
                         data_count_view = pd.DataFrame(
-                            view, index=data.ra["gene_ids_collapsed"]
+                            view, index=data.ra["ensembl_id_collapsed"]
                         )
                         unique_data_df = data_count_view.loc[
                             ~data_count_view.index.isin(duplic_genes)
@@ -168,7 +169,7 @@ def sum_ensembl_ids(
 
                     processed_chunk = process_chunk(view[:, :], dup_genes)
                     processed_array = processed_chunk.to_numpy()
-                    new_row_attrs = {"ensembl_id": processed_chunk.index.to_numpy()}
+                    new_row_attrs = {"ensembl_id_collapsed": processed_chunk.index.to_numpy()}
 
                     if "n_counts" not in view.ca.keys():
                         total_count_view = np.sum(view[:, :], axis=0).astype(int)
@@ -198,32 +199,36 @@ def sum_ensembl_ids(
         assert (
             "ensembl_id" in data.var.columns
         ), "'ensembl_id' column missing from data.var"
+
+        assert (
+            "ensembl_id_collapsed" not in data.var.columns
+        ), "'ensembl_id_collapsed' column already exists in data.var"
+
+        # Check for duplicate Ensembl IDs if collapse_gene_ids is False.
+        # Comparing to gene_token_dict here, would not perform any mapping steps
         gene_ids_in_dict = [
             gene for gene in data.var.ensembl_id if gene in gene_token_dict.keys()
         ]
-        if len(gene_ids_in_dict) == len(set(gene_ids_in_dict)):
-            token_genes_unique = True
-        else:
-            token_genes_unique = False
         if collapse_gene_ids is False:
-            if token_genes_unique:
+            
+            if len(gene_ids_in_dict) == len(set(gene_ids_in_dict)):
                 return data
             else:
                 raise ValueError("Error: data Ensembl IDs non-unique.")
 
+        # Check for when if collapse_gene_ids is True
         gene_ids_collapsed = [
             gene_mapping_dict.get(gene_id.upper()) for gene_id in data.var.ensembl_id
         ]
         gene_ids_collapsed_in_dict = [
             gene for gene in gene_ids_collapsed if gene in gene_token_dict.keys()
         ]
-        if (
-            len(set(gene_ids_collapsed_in_dict)) == len(set(gene_ids_in_dict))
-        ) and token_genes_unique:
+        if len(set(gene_ids_in_dict)) == len(set(gene_ids_collapsed_in_dict)):
+            data.var["ensembl_id_collapsed"] = data.var.ensembl_id.map(gene_mapping_dict)
             return data
 
         else:
-            data.var["gene_ids_collapsed"] = gene_ids_collapsed
+            data.var["ensembl_id_collapsed"] = gene_ids_collapsed
             data.var_names = gene_ids_collapsed
             data = data[:, ~data.var.index.isna()]
             dup_genes = [
@@ -254,16 +259,13 @@ def sum_ensembl_ids(
                 processed_chunks = pd.concat(processed_chunks, axis=1)
                 processed_genes.append(processed_chunks)
             processed_genes = pd.concat(processed_genes, axis=0)
-            var_df = pd.DataFrame({"gene_ids_collapsed": processed_genes.columns})
+            var_df = pd.DataFrame({"ensembl_id_collapsed": processed_genes.columns})
             var_df.index = processed_genes.columns
             processed_genes = sc.AnnData(X=processed_genes, obs=data.obs, var=var_df)
 
             data_dedup = data[:, ~data.var.index.isin(dup_genes)]  # Deduplicated data
             data_dedup = sc.concat([data_dedup, processed_genes], axis=1)
             data_dedup.obs = data.obs
-            data_dedup.var = data_dedup.var.rename(
-                columns={"gene_ids_collapsed": "ensembl_id"}
-            )
             return data_dedup
 
 
@@ -463,15 +465,15 @@ class TranscriptomeTokenizer:
             }
 
         coding_miRNA_loc = np.where(
-            [self.genelist_dict.get(i, False) for i in adata.var["ensembl_id"]]
+            [self.genelist_dict.get(i, False) for i in adata.var["ensembl_id_collapsed"]]
         )[0]
         norm_factor_vector = np.array(
             [
                 self.gene_median_dict[i]
-                for i in adata.var["ensembl_id"][coding_miRNA_loc]
+                for i in adata.var["ensembl_id_collapsed"][coding_miRNA_loc]
             ]
         )
-        coding_miRNA_ids = adata.var["ensembl_id"][coding_miRNA_loc]
+        coding_miRNA_ids = adata.var["ensembl_id_collapsed"][coding_miRNA_loc]
         coding_miRNA_tokens = np.array(
             [self.gene_token_dict[i] for i in coding_miRNA_ids]
         )
@@ -521,6 +523,7 @@ class TranscriptomeTokenizer:
             file_cell_metadata = {
                 attr_key: [] for attr_key in self.custom_attr_name_dict.keys()
             }
+        loom_file_path_original = loom_file_path
 
         dedup_filename = loom_file_path.with_name(loom_file_path.stem + "__dedup.loom")
         loom_file_path = sum_ensembl_ids(
@@ -535,15 +538,15 @@ class TranscriptomeTokenizer:
         with lp.connect(str(loom_file_path)) as data:
             # define coordinates of detected protein-coding or miRNA genes and vector of their normalization factors
             coding_miRNA_loc = np.where(
-                [self.genelist_dict.get(i, False) for i in data.ra["ensembl_id"]]
+                [self.genelist_dict.get(i, False) for i in data.ra["ensembl_id_collapsed"]]
             )[0]
             norm_factor_vector = np.array(
                 [
                     self.gene_median_dict[i]
-                    for i in data.ra["ensembl_id"][coding_miRNA_loc]
+                    for i in data.ra["ensembl_id_collapsed"][coding_miRNA_loc]
                 ]
             )
-            coding_miRNA_ids = data.ra["ensembl_id"][coding_miRNA_loc]
+            coding_miRNA_ids = data.ra["ensembl_id_collapsed"][coding_miRNA_loc]
             coding_miRNA_tokens = np.array(
                 [self.gene_token_dict[i] for i in coding_miRNA_ids]
             )
@@ -595,6 +598,11 @@ class TranscriptomeTokenizer:
 
         if str(dedup_filename) == str(loom_file_path):
             os.remove(str(dedup_filename))
+
+        with lp.connect(str(loom_file_path_original)) as data:
+            if "ensembl_id_collapsed" in data.ra.keys():
+                del data.ra["ensembl_id_collapsed"]
+
 
         return tokenized_cells, file_cell_metadata
 
