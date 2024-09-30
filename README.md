@@ -64,7 +64,7 @@ Example applications demonstrated in [our manuscript](https://rdcu.be/ddrx0) inc
 - in silico perturbation to determine transcription factor cooperativity
 
 # Installation
-In addition to the pretrained model, contained herein are functions for tokenizing and collating data specific to single cell transcriptomics, pretraining the model, fine-tuning the model, extracting and plotting cell embeddings, and performing in silico pertrubation with either the pretrained or fine-tuned models. To install:
+In addition to the pretrained model, contained herein are functions for tokenizing and collating data specific to single cell transcriptomics, pretraining the model, fine-tuning the model, extracting and plotting cell embeddings, and performing in silico pertrubation with either the pretrained or fine-tuned models. To install (~20s):
 
 ```bash
 # Make sure you have git-lfs installed (https://git-lfs.com)
