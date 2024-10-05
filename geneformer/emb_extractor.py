@@ -411,7 +411,7 @@ class EmbExtractor:
         self,
         model_type="Pretrained",
         num_classes=0,
-        emb_mode="cell",
+        emb_mode="cls",
         cell_emb_style="mean_pool",
         gene_emb_style="mean_pool",
         filter_data=None,
