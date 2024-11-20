@@ -84,7 +84,7 @@ class InSilicoPerturber:
         anchor_gene=None,
         model_type="Pretrained",
         num_classes=0,
-        emb_mode="cell",
+        emb_mode="cls",
         cell_emb_style="mean_pool",
         filter_data=None,
         cell_states_to_model=None,
