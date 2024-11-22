@@ -596,6 +596,12 @@ class EmbExtractor:
         filtered_input_data = pu.load_and_filter(
             self.filter_data, self.nproc, input_data_file
         )
+
+        # Check to make sure that all the labels exist in the tokenized data:
+        if self.emb_label is not None:
+            for label in self.emb_label:
+                assert label in filtered_input_data.features.keys(), f"Attribute `{label}` not present in dataset features"
+
         if cell_state is not None:
             filtered_input_data = pu.filter_by_dict(
                 filtered_input_data, cell_state, self.nproc
