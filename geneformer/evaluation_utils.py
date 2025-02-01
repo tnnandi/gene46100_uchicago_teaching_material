@@ -182,14 +182,18 @@ def plot_ROC(roc_metric_dict, model_style_dict, title, output_dir, output_prefix
     for model_name in roc_metric_dict.keys():
         mean_fpr = roc_metric_dict[model_name]["mean_fpr"]
         mean_tpr = roc_metric_dict[model_name]["mean_tpr"]
-        roc_auc = roc_metric_dict[model_name]["roc_auc"]
-        roc_auc_sd = roc_metric_dict[model_name]["roc_auc_sd"]
         color = model_style_dict[model_name]["color"]
         linestyle = model_style_dict[model_name]["linestyle"]
-        if len(roc_metric_dict[model_name]["all_roc_auc"]) > 1:
-            label = f"{model_name} (AUC {roc_auc:0.2f} $\pm$ {roc_auc_sd:0.2f})"
+        if "roc_auc" not in roc_metric_dict[model_name].keys():
+            all_roc_auc = roc_metric_dict[model_name]["all_roc_auc"]
+            label = f"{model_name} (AUC {all_roc_auc:0.2f})"
         else:
-            label = f"{model_name} (AUC {roc_auc:0.2f})"
+            roc_auc = roc_metric_dict[model_name]["roc_auc"]
+            roc_auc_sd = roc_metric_dict[model_name]["roc_auc_sd"]
+            if len(roc_metric_dict[model_name]["all_roc_auc"]) > 1:
+                label = f"{model_name} (AUC {roc_auc:0.2f} $\pm$ {roc_auc_sd:0.2f})"
+            else:
+                label = f"{model_name} (AUC {roc_auc:0.2f})"
         plt.plot(
             mean_fpr, mean_tpr, color=color, linestyle=linestyle, lw=lw, label=label
         )
