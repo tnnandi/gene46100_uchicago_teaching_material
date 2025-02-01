@@ -115,13 +115,20 @@ def label_classes(classifier, data, gene_class_dict, nproc):
 
     class_id_dict = dict(zip(label_set, [i for i in range(len(label_set))]))
     id_class_dict = {v: k for k, v in class_id_dict.items()}
+    inverse_gene_class_dict = {}
+    # Iterate over each key and list of values in the original dictionary
+    for key, value_list in gene_class_dict.items():
+        # Iterate over each value in the list
+        for value in value_list:
+            # Assign the value as a key and the original key as its value in the new dictionary
+            inverse_gene_class_dict[value] = key
 
     def classes_to_ids(example):
         if classifier == "cell":
             example["label"] = class_id_dict[example["label"]]
         elif classifier == "gene":
             example["labels"] = label_gene_classes(
-                example, class_id_dict, gene_class_dict
+                example, class_id_dict, inverse_gene_class_dict
             )
         return example
 
@@ -129,9 +136,9 @@ def label_classes(classifier, data, gene_class_dict, nproc):
     return data, id_class_dict
 
 
-def label_gene_classes(example, class_id_dict, gene_class_dict):
+def label_gene_classes(example, class_id_dict, inverse_gene_class_dict):
     return [
-        class_id_dict.get(gene_class_dict.get(token_id, -100), -100)
+        class_id_dict.get(inverse_gene_class_dict.get(token_id, -100), -100)
         for token_id in example["input_ids"]
     ]
 
