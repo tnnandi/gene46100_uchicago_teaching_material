@@ -62,7 +62,7 @@ class InSilicoPerturber:
         "genes_to_perturb": {"all", list},
         "combos": {0, 1},
         "anchor_gene": {None, str},
-        "model_type": {"Pretrained", "GeneClassifier", "CellClassifier", "MTLCellClassifier", "MTLCellClassifier-Quantized"},
+        "model_type": {"Pretrained", "GeneClassifier", "CellClassifier", "MTLCellClassifier", "Pretrained-Quantized", "MTLCellClassifier-Quantized"},
         "num_classes": {int},
         "emb_mode": {"cls", "cell", "cls_and_gene", "cell_and_gene"},
         "cell_emb_style": {"mean_pool"},
@@ -132,7 +132,7 @@ class InSilicoPerturber:
             | ENSEMBL ID of gene to use as anchor in combination perturbations.
             | For example, if combos=1 and anchor_gene="ENSG00000148400":
             |     anchor gene will be perturbed in combination with each other gene.
-        model_type : {"Pretrained", "GeneClassifier", "CellClassifier", "MTLCellClassifier", "MTLCellClassifier-Quantized"}
+        model_type : {"Pretrained", "GeneClassifier", "CellClassifier", "MTLCellClassifier", "Pretrained-Quantized", "MTLCellClassifier-Quantized"}
             | Whether model is the pretrained Geneformer or a fine-tuned gene, cell, or multitask cell classifier (+/- 8bit quantization).
         num_classes : int
             | If model is a gene or cell classifier, specify number of classes it was trained to classify.

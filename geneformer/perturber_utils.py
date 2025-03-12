@@ -113,15 +113,22 @@ def slice_by_inds_to_perturb(filtered_input_data, cell_inds_to_perturb):
 
 # load model to GPU
 def load_model(model_type, num_classes, model_directory, mode, quantize=False):
-    if model_type == "MTLCellClassifier-Quantized":
+    if model_type == "Pretrained-Quantized":
+        inference_only = True
+        model_type = "Pretrained"
+        quantize = True
+    elif model_type == "MTLCellClassifier-Quantized":
+        inference_only = True
         model_type = "MTLCellClassifier"
         quantize = True
+    else:
+        inference_only = False
 
     output_hidden_states = (mode == "eval")
 
     # Quantization logic
     if quantize:
-        if model_type == "MTLCellClassifier":
+        if inference_only:
             quantize_config = BitsAndBytesConfig(load_in_8bit=True)
             peft_config = None
         else:
@@ -179,7 +186,7 @@ def load_model(model_type, num_classes, model_directory, mode, quantize=False):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
     elif peft_config:
-        # Apply PEFT for quantized models (except MTLCellClassifier)
+        # Apply PEFT for quantized models (except MTLCellClassifier and CellClassifier-QuantInf)
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_config)
 
