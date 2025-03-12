@@ -429,8 +429,8 @@ class EmbExtractor:
 
         **Parameters:**
 
-        model_type : {"Pretrained", "GeneClassifier", "CellClassifier"}
-            | Whether model is the pretrained Geneformer or a fine-tuned gene or cell classifier.
+        model_type : {"Pretrained", "GeneClassifier", "CellClassifier", "Pretrained-Quantized"}
+            | Whether model is the pretrained Geneformer (full or quantized) or a fine-tuned gene or cell classifier.
         num_classes : int
             | If model is a gene or cell classifier, specify number of classes it was trained to classify.
             | For the pretrained Geneformer model, number of classes is 0 as it is not a classifier.
@@ -644,15 +644,19 @@ class EmbExtractor:
         if self.exact_summary_stat == "exact_mean":
             embs = embs.mean(dim=0)
             emb_dims = pu.get_model_emb_dims(model)
+            print(embs_df.shape)
+            print(embs_df)
+            print("#######")
+            print(embs_df.iloc[:, 0 : emb_dims - 1])
             embs_df = pd.DataFrame(
-                embs_df[0 : emb_dims - 1].mean(axis="rows"),
+                embs_df.iloc[:, 0 : emb_dims - 1].mean(axis="rows"),
                 columns=[self.exact_summary_stat],
             ).T
         elif self.exact_summary_stat == "exact_median":
             embs = torch.median(embs, dim=0)[0]
             emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
-                embs_df[0 : emb_dims - 1].median(axis="rows"),
+                embs_df.iloc[:, 0 : emb_dims - 1].median(axis="rows"),
                 columns=[self.exact_summary_stat],
             ).T
 
