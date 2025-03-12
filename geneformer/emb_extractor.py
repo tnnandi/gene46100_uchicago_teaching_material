@@ -644,19 +644,15 @@ class EmbExtractor:
         if self.exact_summary_stat == "exact_mean":
             embs = embs.mean(dim=0)
             emb_dims = pu.get_model_emb_dims(model)
-            print(embs_df.shape)
-            print(embs_df)
-            print("#######")
-            print(embs_df.iloc[:, 0 : emb_dims - 1])
             embs_df = pd.DataFrame(
-                embs_df.iloc[:, 0 : emb_dims - 1].mean(axis="rows"),
+                embs_df.iloc[:, 0 : emb_dims].mean(axis="rows"),
                 columns=[self.exact_summary_stat],
             ).T
         elif self.exact_summary_stat == "exact_median":
             embs = torch.median(embs, dim=0)[0]
             emb_dims = pu.get_model_emb_dims(model)
             embs_df = pd.DataFrame(
-                embs_df.iloc[:, 0 : emb_dims - 1].median(axis="rows"),
+                embs_df.iloc[:, 0 : emb_dims].median(axis="rows"),
                 columns=[self.exact_summary_stat],
             ).T
 
