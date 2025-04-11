@@ -17,10 +17,10 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
-GENE_MEDIAN_FILE = Path(__file__).parent / "gene_median_dictionary.pkl"
-TOKEN_DICTIONARY_FILE = Path(__file__).parent / "token_dictionary.pkl"
-ENSEMBL_DICTIONARY_FILE = Path(__file__).parent / "gene_name_id_dict.pkl"
-
+from . import (
+    TOKEN_DICTIONARY_FILE,
+    ENSEMBL_DICTIONARY_FILE,
+)
 
 logger = logging.getLogger(__name__)
 
