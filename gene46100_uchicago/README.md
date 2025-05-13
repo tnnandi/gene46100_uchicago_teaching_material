@@ -15,7 +15,7 @@ This repository contains code for performing **in-silico perturbation studies** 
    Use `tokenize_data.py` to convert the `.h5ad` file into a tokenized format suitable for input into the Geneformer model.
 
 4. **Fine-Tune Geneformer**  
-   Fine-tune the pretrained Geneformer model to distinguish between cells exposed to different radiation levels.
+   Fine-tune the pretrained Geneformer model using `classify.py` to distinguish between cells exposed to different radiation levels.
 
 5. **Visualize Cell Embeddings**  
    Use `extract_and_plot_cell_embeddings.py` to extract and visualize the learned cell embeddings.
